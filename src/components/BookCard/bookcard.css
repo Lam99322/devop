@@ -1,0 +1,31 @@
+.book-card {
+  border: 1px solid #eee;
+  padding: 10px;
+  border-radius: 6px;
+  transition: 0.2s;
+  background: white;
+}
+
+.book-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.book-img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.book-title {
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.book-price {
+  margin-top: 5px;
+  color: #d9534f;
+  font-weight: bold;
+}
