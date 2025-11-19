@@ -1,4 +1,5 @@
 import axios from "axios";
+import cookieUtils from "../utils/cookieUtils";
 
 // 🔹 Client cho các request cần token
 const axiosClient = axios.create({
@@ -8,7 +9,7 @@ const axiosClient = axios.create({
 
 // Thêm token vào header Authorization nếu có
 axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = cookieUtils.getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -20,8 +21,8 @@ axiosClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "a/login";
+      cookieUtils.removeAuthToken();
+      window.location.href = "/login";
     }
     return Promise.reject(error);
   }

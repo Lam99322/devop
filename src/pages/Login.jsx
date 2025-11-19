@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { axiosClientPublic } from "../api/axiosClient";
+import { AuthContext } from "../context/AuthContext";
 
 export default function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -25,7 +27,8 @@ export default function Login() {
 
       const res = await axiosClientPublic.post("/auth/login", payload);
       if (res.data?.data?.accessToken) {
-        localStorage.setItem("token", res.data.data.accessToken);
+        // Use AuthContext login method instead of directly setting localStorage
+        login(res.data.data.user || { username: form.username }, res.data.data.accessToken);
         navigate("/"); // về trang chủ
       } else {
         setError("Đăng nhập thất bại: không nhận được token");
