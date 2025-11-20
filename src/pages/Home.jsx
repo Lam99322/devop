@@ -12,7 +12,7 @@ const BookItem = ({ book }) => {
 
     return (
         <Link
-            to={`/book/${book.slug}`}
+            to={`/books/${book.slug}`}
             className="relative bg-white border border-gray-200 rounded-lg shadow-sm p-3 block 
                        transition transform hover:shadow-md hover:-translate-y-0.5"
         >
