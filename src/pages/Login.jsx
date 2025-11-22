@@ -1,6 +1,6 @@
 import React, { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { axiosClientPublic } from "../api/axiosClient";
+import { authAPI } from "../api/apiHelpers";
 import { AuthContext } from "../context/AuthContext";
 
 export default function Login() {
@@ -25,11 +25,73 @@ export default function Login() {
         password: form.password,
       };
 
-      const res = await axiosClientPublic.post("/auth/login", payload);
+      const res = await authAPI.login(payload);
+      console.log("🔍 Login response:", res.data);
+      
       if (res.data?.data?.accessToken) {
-        // Use AuthContext login method instead of directly setting localStorage
-        login(res.data.data.user || { username: form.username }, res.data.data.accessToken);
-        navigate("/"); // về trang chủ
+        // Use user info from backend response
+        console.log("🔍 Backend login response:", res.data);
+        
+        let userInfo = res.data.data.user;
+        
+        // If backend doesn't provide user info, create fallback
+        if (!userInfo) {
+          console.log("⚠️ No user info from backend, creating fallback");
+          const isAdmin = form.username === 'admin123';
+          userInfo = {
+            id: isAdmin ? 'd11f3cf0-4173-4751-9daa-ccde558c5303' : 'user-' + Date.now(),
+            username: form.username,
+            name: isAdmin ? 'Admin User' : 'Regular User',
+            email: isAdmin ? 'admin@bookstore.com' : `${form.username}@example.com`,
+            avatar: `https://ui-avatars.com/api/?background=random&rounded=true&bold=true&name=${form.username}`,
+            status: 'ACTIVE',
+            role: isAdmin ? 'ADMIN' : 'USER',
+            roles: isAdmin ? [{ name: 'ADMIN' }] : [{ name: 'USER' }]
+          };
+        } else {
+          console.log("✅ Using user info from backend:", userInfo);
+          
+          // Ensure avatar exists
+          if (!userInfo.avatar) {
+            userInfo.avatar = `https://ui-avatars.com/api/?background=random&rounded=true&bold=true&name=${encodeURIComponent(userInfo.name || userInfo.username)}`;
+          }
+        }
+        
+        // Debug JWT token to see what backend actually sends
+        const token = res.data.data.accessToken;
+        console.log("🔑 JWT Token received:", token.substring(0, 50) + "...");
+        
+        // Try to decode JWT token to see user role info
+        try {
+          const tokenParts = token.split('.');
+          const payload = JSON.parse(atob(tokenParts[1] + '='.repeat((4 - tokenParts[1].length % 4) % 4)));
+          console.log("🔓 JWT Token payload:", payload);
+          
+          // If JWT has role info, use it to update userInfo
+          if (payload.role || payload.roles || payload.authorities) {
+            console.log("📋 JWT contains role info:");
+            console.log("- role:", payload.role);
+            console.log("- roles:", payload.roles);
+            console.log("- authorities:", payload.authorities);
+            
+            // Update userInfo with JWT role data
+            if (payload.role) userInfo.role = payload.role;
+            if (payload.roles) userInfo.roles = payload.roles;
+            if (payload.authorities) userInfo.authorities = payload.authorities;
+          }
+        } catch (jwtError) {
+          console.error("❌ Failed to decode JWT:", jwtError);
+        }
+        
+        console.log("🔍 Final user info to save:", userInfo);
+        login(userInfo, token);
+        
+        // Show success message
+        const isAdminUser = userInfo.role === 'ADMIN' || userInfo.roles?.some(r => r.name === 'ADMIN');
+        console.log(`✅ Login successful! Welcome ${userInfo.name || userInfo.username}${isAdminUser ? ' (Admin)' : ' (User)'}`);
+        
+        // Redirect to admin if admin, otherwise home
+        navigate(isAdminUser ? "/admin" : "/"); // redirect admin to admin panel
       } else {
         setError("Đăng nhập thất bại: không nhận được token");
       }
@@ -54,7 +116,7 @@ export default function Login() {
         <input
           type="text"
           name="username"
-          placeholder="Tên người dùng"
+          placeholder="Tên người dùng (admin123 hoặc user123)"
           value={form.username}
           onChange={handleChange}
           className="w-full mb-3 p-2 border rounded"
@@ -63,7 +125,7 @@ export default function Login() {
         <input
           type="password"
           name="password"
-          placeholder="Mật khẩu"
+          placeholder="Mật khẩu (admin123 hoặc user123)"
           value={form.password}
           onChange={handleChange}
           className="w-full mb-3 p-2 border rounded"

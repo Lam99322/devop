@@ -1,15 +1,61 @@
-export default function AdminLayout({ children }) {
+// src/layouts/AdminLayout.jsx
+import React from "react";
+import { Link, Outlet } from "react-router-dom";
+
+export default function AdminLayout() {
   return (
-    <div className="flex">
-      <aside className="w-56 bg-gray-800 text-white min-h-screen p-5">
-        <p className="font-bold text-xl">Admin</p>
-        <ul className="mt-5 space-y-3">
-          <li><a href="/admin">Dashboard</a></li>
-          <li><a href="/admin/books">Manage Books</a></li>
-          <li><a href="/admin/orders">Manage Orders</a></li>
-        </ul>
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r shadow-sm p-4">
+        <h2 className="text-xl font-bold mb-6">Admin Panel</h2>
+
+        <nav className="space-y-2">
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin">
+            Dashboard
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/users">
+            Users
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/orders">
+            Orders
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/books">
+            Books
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/categories">
+            Categories
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/publishers">
+            Publishers
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/discounts">
+            Discounts
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/reviews">
+            Reviews
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/roles">
+            Roles
+          </Link>
+
+          <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/permissions">
+            Permissions
+          </Link>
+        </nav>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+
+      {/* Main content */}
+      <main className="flex-1 p-6">
+        <Outlet />
+      </main>
     </div>
   );
 }

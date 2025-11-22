@@ -84,11 +84,13 @@ export default function HomeContentOnly() {
                 
                 {/* Khu vực Sách Nổi Bật (Kinh nghiệm thành công...) */}
                 <div className="w-2/3 p-4 flex flex-col md:flex-row items-center justify-center space-x-4">
-                    <img
-                        src="/images/bannerr.jpg" 
-                        alt="Kinh nghiệm thành công của ông chủ 48"
-                        className="max-h-56 object-contain shadow-xl border border-gray-300"
-                    />
+                    <div className="max-h-56 w-48 bg-gradient-to-br from-blue-500 to-purple-600 shadow-xl border border-gray-300 rounded-lg flex items-center justify-center text-white">
+                        <div className="text-center p-4">
+                            <div className="text-3xl mb-2">📚</div>
+                            <div className="text-sm font-semibold">KINH NGHIỆM</div>
+                            <div className="text-sm">THÀNH CÔNG</div>
+                        </div>
+                    </div>
                     <div className="text-center md:text-left">
                         <h3 className="text-xl font-bold text-gray-800">KINH NGHIỆM THÀNH CÔNG CỦA ÔNG CHỦ 48</h3>
                         <p className="text-sm text-gray-600 mt-2 hidden sm:block">

@@ -12,6 +12,9 @@ axiosClient.interceptors.request.use((config) => {
   const token = cookieUtils.getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log("🔑 AxiosClient: Adding token to request:", config.url, "Token:", token.substring(0, 20) + "...");
+  } else {
+    console.log("❌ AxiosClient: No token found for request:", config.url);
   }
   return config;
 });
@@ -20,6 +23,13 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (res) => res,
   (error) => {
+    console.log("❌ AxiosClient Response Error:", {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
+    
     if (error.response?.status === 401) {
       cookieUtils.removeAuthToken();
       window.location.href = "/login";

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Token</title>
+</head>
+<body>
+    <h1>Debug Token & Cookies</h1>
+    <button onclick="checkCookies()">Check Cookies</button>
+    <button onclick="testAPI()">Test /users/me API</button>
+    <button onclick="clearStorage()">Clear All Storage</button>
+    <pre id="result"></pre>
+
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
+    <script>
+        const result = document.getElementById('result');
+        
+        function log(message) {
+            result.innerHTML += message + '\n';
+            console.log(message);
+        }
+        
+        function checkCookies() {
+            result.innerHTML = '';
+            log('=== CHECKING COOKIES ===');
+            
+            const allCookies = Cookies.get();
+            log('All cookies: ' + JSON.stringify(allCookies, null, 2));
+            
+            const authToken = Cookies.get('auth_token');
+            log('Auth token: ' + (authToken || 'NOT FOUND'));
+            
+            if (authToken) {
+                log('Token length: ' + authToken.length);
+                log('Token start: ' + authToken.substring(0, 50) + '...');
+            }
+        }
+        
+        async function testAPI() {
+            result.innerHTML = '';
+            log('=== TESTING /users/me API ===');
+            
+            const authToken = Cookies.get('auth_token');
+            if (!authToken) {
+                log('ERROR: No auth token found!');
+                return;
+            }
+            
+            log('Using token: ' + authToken.substring(0, 50) + '...');
+            
+            try {
+                const response = await fetch('http://localhost:8080/bookstore/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    }
+                });
+                
+                log('Response status: ' + response.status);
+                log('Response headers: ' + JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+                
+                const data = await response.text();
+                log('Response body: ' + data);
+                
+            } catch (error) {
+                log('ERROR: ' + error.message);
+            }
+        }
+        
+        function clearStorage() {
+            result.innerHTML = '';
+            log('=== CLEARING STORAGE ===');
+            
+            // Clear cookies
+            const allCookies = Cookies.get();
+            for (let cookieName in allCookies) {
+                Cookies.remove(cookieName);
+                log('Removed cookie: ' + cookieName);
+            }
+            
+            // Clear localStorage
+            localStorage.clear();
+            log('Cleared localStorage');
+            
+            // Clear sessionStorage
+            sessionStorage.clear();
+            log('Cleared sessionStorage');
+            
+            log('All storage cleared!');
+        }
+    </script>
+</body>
+</html>
