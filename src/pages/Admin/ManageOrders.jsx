@@ -1,86 +1,27 @@
 import { useEffect, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { FaBox, FaSpinner, FaEye, FaEdit, FaCheck, FaTimes, FaCog } from "react-icons/fa";
+import { FaBox, FaSpinner, FaEye, FaEdit, FaCheck, FaTimes, FaSync } from "react-icons/fa";
 import { formatCurrency } from "../../utils/formatCurrency";
-import APITester from "../../components/APITester";
 
 export default function ManageOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAPITester, setShowAPITester] = useState(false);
 
   const loadOrders = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log("📦 Loading orders from backend...");
       
-      let res = null;
-      // Thử nhiều endpoint có thể có
-      const endpoints = ["/orders/list", "/orders", "/admin/orders", "/api/orders", "/orders/all"];
+      // BaseURL đã có /bookstore, endpoint từ controller: GET /orders/list  
+      const res = await axiosClient.get("/orders/list");
       
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 Trying endpoint: ${endpoint}`);
-          res = await axiosClient.get(endpoint);
-          console.log(`✅ Success with endpoint ${endpoint}:`, res.data);
-          break;
-        } catch (err) {
-          console.log(`❌ Failed endpoint ${endpoint}:`, err.response?.status, err.response?.data);
-        }
-      }
-      
-      if (!res) {
-        throw new Error("Không thể kết nối với bất kỳ endpoint nào");
-      }
-      
-      // Handle response structure với debug chi tiết
-      let ordersData = [];
-      console.log("📋 Full response:", JSON.stringify(res.data, null, 2));
-      
-      if (res.data) {
-        if (Array.isArray(res.data)) {
-          ordersData = res.data;
-          console.log("✅ Response is direct array");
-        } else if (res.data.data && Array.isArray(res.data.data)) {
-          ordersData = res.data.data;
-          console.log("✅ Response is wrapped in .data");
-        } else if (res.data.content && Array.isArray(res.data.content)) {
-          ordersData = res.data.content;
-          console.log("✅ Response is wrapped in .content (paginated)");
-        } else if (res.data.orders && Array.isArray(res.data.orders)) {
-          ordersData = res.data.orders;
-          console.log("✅ Response is wrapped in .orders");
-        } else if (res.data.result && Array.isArray(res.data.result)) {
-          ordersData = res.data.result;
-          console.log("✅ Response is wrapped in .result");
-        } else {
-          console.warn("❌ Unexpected orders response structure:", res.data);
-          console.warn("Available keys:", Object.keys(res.data));
-          ordersData = [];
-        }
-      }
-      
-      console.log(`📦 Loaded ${ordersData.length} orders:`, ordersData);
+      // Backend: ApiResponse<PageResponse<Object>>
+      const ordersData = res.data?.data?.content || [];
+      console.log('📦 Orders received:', ordersData);
       setOrders(ordersData);
-      
-      if (ordersData.length === 0) {
-        setError("Chưa có đơn hàng nào trong hệ thống.");
-      }
     } catch (err) {
-      console.error("❌ Error loading orders:", err);
-      let errorMsg = "Không thể tải danh sách đơn hàng";
-      if (err.response?.status === 401) {
-        errorMsg = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
-      } else if (err.response?.status === 403) {
-        errorMsg = "Không có quyền truy cập đơn hàng.";
-      } else if (err.response?.status === 405) {
-        errorMsg = "API endpoint không đúng. Backend có thể chưa hỗ trợ /orders/list.";
-      } else {
-        errorMsg = `Lỗi kết nối: ${err.response?.status} - ${err.message}`;
-      }
-      setError(errorMsg);
+      setError("Không thể tải danh sách đơn hàng");
       setOrders([]);
     } finally {
       setLoading(false);
@@ -92,23 +33,23 @@ export default function ManageOrders() {
   }, []);
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'shipping': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
+    switch (status?.toUpperCase()) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'CONFIRMED': return 'bg-blue-100 text-blue-800';
+      case 'SHIPPING': return 'bg-purple-100 text-purple-800';
+      case 'DELIVERED': return 'bg-green-100 text-green-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending': return 'Chờ xử lý';
-      case 'confirmed': return 'Đã xác nhận';
-      case 'shipping': return 'Đang giao';
-      case 'delivered': return 'Đã giao';
-      case 'cancelled': return 'Đã hủy';
+    switch (status?.toUpperCase()) {
+      case 'PENDING': return 'Chờ xử lý';
+      case 'CONFIRMED': return 'Đã xác nhận';
+      case 'SHIPPING': return 'Đang giao';
+      case 'DELIVERED': return 'Đã giao';
+      case 'CANCELLED': return 'Đã hủy';
       default: return status || 'Không rõ';
     }
   };
@@ -128,52 +69,19 @@ export default function ManageOrders() {
           <span className="text-gray-600">({ordersArray.length} đơn hàng)</span>
         </div>
         <button
-          onClick={() => setShowAPITester(!showAPITester)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+          onClick={loadOrders}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          <FaCog />
-          {showAPITester ? 'Ẩn' : 'Debug'} API
+          <FaSync className={loading ? 'animate-spin' : ''} />
+          Tải lại
         </button>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">{error}</p>
-          <button
-            onClick={() => {
-              console.log("🎭 Loading mock orders for testing...");
-              setOrders([
-                {
-                  id: "ORDER-001",
-                  userId: "user-123",
-                  customerName: "Nguyễn Văn A",
-                  total: 250000,
-                  status: "pending",
-                  createdAt: new Date().toISOString(),
-                  items: [
-                    { title: "Đắc Nhân Tâm", quantity: 2, price: 89000 },
-                    { title: "Sapiens", quantity: 1, price: 125000 }
-                  ]
-                },
-                {
-                  id: "ORDER-002", 
-                  userId: "user-456",
-                  customerName: "Trần Thị B",
-                  total: 180000,
-                  status: "delivered",
-                  createdAt: new Date(Date.now() - 86400000).toISOString(),
-                  items: [
-                    { title: "Clean Code", quantity: 1, price: 180000 }
-                  ]
-                }
-              ]);
-              setError(null);
-            }}
-            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-          >
-            Dùng dữ liệu mẫu để test
-          </button>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">{error}</p>
         </div>
       )}
 
@@ -211,12 +119,13 @@ export default function ManageOrders() {
                     <td className="p-4 font-mono text-sm text-blue-600">#{order.id}</td>
                     <td className="p-4">
                       <div>
-                        <p className="font-medium text-gray-800">{order.customerName || order.user || 'N/A'}</p>
-                        <p className="text-sm text-gray-500">ID: {order.userId || 'N/A'}</p>
+                        <p className="font-medium text-gray-800">{order.customerName || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{order.customerEmail || 'N/A'}</p>
+                        <p className="text-xs text-gray-400">{order.customerPhone || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="p-4 font-medium text-green-600">
-                      {formatCurrency(order.total)}
+                      {formatCurrency(order.totalAmount || order.total || 0)}
                     </td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
@@ -230,24 +139,39 @@ export default function ManageOrders() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            const itemsText = order.items?.map(item => 
-                              `- ${item.title} x${item.quantity} = ${formatCurrency(item.price * item.quantity)}`
+                            const itemsText = order.orderDetails?.map(item => 
+                              `- ${item.bookTitle || `Book ID: ${item.bookId}`} x${item.quantity} = ${formatCurrency(item.unitPrice * item.quantity)}`
                             ).join('\n') || 'Không có thông tin sản phẩm';
                             
-                            alert(`Chi tiết đơn hàng ${order.id}:\n\nKhách hàng: ${order.customerName || order.user || 'N/A'}\nTổng tiền: ${formatCurrency(order.total)}\nTrạng thái: ${getStatusText(order.status)}\nNgày đặt: ${order.createdAt ? new Date(order.createdAt).toLocaleString('vi-VN') : 'N/A'}\n\nSản phẩm:\n${itemsText}`);
+                            alert(`Chi tiết đơn hàng ${order.id}:\n\nKhách hàng: ${order.customerName}\nEmail: ${order.customerEmail}\nSĐT: ${order.customerPhone}\nĐịa chỉ: ${order.shippingAddress}\nTổng tiền: ${formatCurrency(order.totalAmount)}\nTrạng thái: ${getStatusText(order.status)}\nNgày đặt: ${order.createdAt ? new Date(order.createdAt).toLocaleString('vi-VN') : 'N/A'}\nPhương thức thanh toán: ${order.paymentMethod}\nGhi chú: ${order.notes || 'Không có'}\n\nSản phẩm:\n${itemsText}`);
                           }}
                           className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm transition-colors"
                         >
                           <FaEye />
                           Xem
                         </button>
-                        <button
-                          onClick={() => alert("Chức năng cập nhật trạng thái sẽ được implement sau")}
-                          className="flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm transition-colors"
+                        <select
+                          value={order.status}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value;
+                            if (confirm(`Cập nhật trạng thái đơn hàng ${order.id} thành "${getStatusText(newStatus)}"?`)) {
+                              try {
+                                await axiosClient.patch(`/orders/${order.id}/status?status=${newStatus}`);
+                                // Reload orders after update
+                                loadOrders();
+                              } catch (error) {
+                                alert("Không thể cập nhật trạng thái: " + error.message);
+                              }
+                            }
+                          }}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
                         >
-                          <FaEdit />
-                          Cập nhật
-                        </button>
+                          <option value="PENDING">Chờ xử lý</option>
+                          <option value="CONFIRMED">Đã xác nhận</option>
+                          <option value="SHIPPING">Đang giao</option>
+                          <option value="DELIVERED">Đã giao</option>
+                          <option value="CANCELLED">Đã hủy</option>
+                        </select>
                       </div>
                     </td>
                   </tr>
@@ -257,13 +181,6 @@ export default function ManageOrders() {
           </div>
         )}
       </div>
-
-      {/* API Tester */}
-      {showAPITester && (
-        <div className="border-t pt-6">
-          <APITester />
-        </div>
-      )}
     </div>
   );
 }

@@ -23,7 +23,6 @@ import Dashboard from "../pages/Admin/Dashboard";
 import ManageBooks from "../pages/Admin/ManageBooks";
 import ManageOrders from "../pages/Admin/ManageOrders";
 import CategoriesList from "../pages/Admin/Categories/CategoriesList";
-import APITester from "../components/APITester";
 
 // ROUTE GUARDS
 import PrivateRoute from "./PrivateRoute";
@@ -93,7 +92,6 @@ export default function AppRoutes() {
         { path: "books", element: <ManageBooks /> },
         { path: "orders", element: <ManageOrders /> },
         { path: "categories", element: <CategoriesList /> },
-        { path: "api-test", element: <APITester /> },
       ],
     },
 

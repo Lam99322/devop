@@ -106,9 +106,10 @@ export const getUserAvatarUrl = (user) => {
   return `https://via.placeholder.com/150/3b82f6/ffffff?text=${initial}`;
 };
 
-export default {
-  getBookImageUrl,
-  getPlaceholderUrl, 
-  handleImageError,
-  getUserAvatarUrl
-};
+// Chỉ dùng named exports để tránh conflict
+// export default {
+//   getBookImageUrl,
+//   getPlaceholderUrl, 
+//   handleImageError,
+//   getUserAvatarUrl
+// };

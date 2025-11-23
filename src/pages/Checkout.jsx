@@ -66,7 +66,7 @@ export default function Checkout() {
 
     setLoading(true);
     try {
-      const result = await submitOrder(cart, orderForm, { total, subtotal, shippingFee, tax });
+      const result = await submitOrder(cart, orderForm, { total, subtotal, shippingFee, tax }, user);
       console.log("✅ Order submitted successfully:", result);
       
       setOrderData(result.data || result);

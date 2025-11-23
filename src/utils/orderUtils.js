@@ -1,67 +1,86 @@
 // src/utils/orderUtils.js
 import axiosClient from "../api/axiosClient";
 
-export const submitOrder = async (cart, orderForm, totals) => {
-  console.log("📦 Starting order submission...");
-  
+export const submitOrder = async (cart, orderForm, totals, user = null) => {
   // Basic validation
   if (!cart || cart.length === 0) {
     throw new Error("Giỏ hàng trống");
   }
 
-  // Prepare order data - try different formats backend might accept
+  // Validate required fields
+  if (!orderForm.fullName?.trim()) throw new Error("Họ tên không được để trống");
+  if (!orderForm.email?.trim()) throw new Error("Email không được để trống");
+  if (!orderForm.phone?.trim()) throw new Error("Số điện thoại không được để trống");
+  if (!orderForm.address?.trim()) throw new Error("Địa chỉ không được để trống");
+  if (!orderForm.district?.trim()) throw new Error("Quận/Huyện không được để trống");
+  if (!orderForm.city?.trim()) throw new Error("Tỉnh/Thành phố không được để trống");
+
+  // Format theo OrderCreationRequest DTO - variations để test
   const baseOrderData = {
-    items: cart.map(item => ({
-      bookId: item.id,
-      title: item.title,
-      price: item.price,
-      quantity: item.quantity || 1
-    })),
-    customerName: orderForm.fullName,
-    customerEmail: orderForm.email,
-    customerPhone: orderForm.phone,
-    shippingAddress: `${orderForm.address}, ${orderForm.district}, ${orderForm.city}`,
-    paymentMethod: orderForm.paymentMethod,
-    totalAmount: totals.total
+    customerName: orderForm.fullName?.trim(),
+    customerEmail: orderForm.email?.trim(),
+    customerPhone: orderForm.phone?.trim(),
+    shippingAddress: `${orderForm.address?.trim()}, ${orderForm.district?.trim()}, ${orderForm.city?.trim()}`,
+    paymentMethod: orderForm.paymentMethod?.toUpperCase(),
+    deliveryMethod: orderForm.deliveryMethod?.toUpperCase(), 
+    notes: orderForm.notes?.trim() || "",
+    totalAmount: parseFloat(totals.total.toFixed(2)), // Try decimal
+    orderDetails: cart.map(item => ({
+      bookId: String(item.id),
+      quantity: parseInt(item.quantity || 1),
+      unitPrice: parseFloat(item.price.toFixed(2))
+    }))
   };
 
-  console.log("📊 Order data to submit:", baseOrderData);
+  // Add userId if available
+  const orderData = user?.id ? { ...baseOrderData, userId: String(user.id) } : baseOrderData;
 
-  // Try different endpoints and formats
-  const attempts = [
-    { endpoint: "/orders/create", data: baseOrderData },
-    { endpoint: "/orders", data: baseOrderData },
-    { endpoint: "/orders", data: { items: cart } }, // Minimal format
-    { endpoint: "/order/create", data: baseOrderData }
-  ];
+  // Chỉ dùng endpoint chính xác từ OrderController
+  const endpoint = "/orders"; // POST /orders từ @PostMapping
 
-  for (const attempt of attempts) {
-    try {
-      console.log(`🔄 Trying ${attempt.endpoint}...`);
-      const response = await axiosClient.post(attempt.endpoint, attempt.data);
-      console.log(`✅ Success with ${attempt.endpoint}:`, response.data);
-      return response.data;
-    } catch (error) {
-      console.warn(`❌ Failed ${attempt.endpoint}:`, error.response?.status, error.response?.data?.message);
-      continue;
+  try {
+    console.log(`📤 Creating order with data:`, JSON.stringify(orderData, null, 2));
+    console.log(`🎯 Target endpoint: POST ${endpoint}`);
+    
+    const response = await axiosClient.post(endpoint, orderData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 15000
+    });
+    
+    console.log(`✅ Order created successfully:`, response.data);
+    
+    // Backend trả về ApiResponse<OrderResponse>
+    return {
+      success: true,
+      data: response.data?.data || response.data,
+      message: response.data?.message || "Đơn hàng đã được tạo thành công!"
+    };
+    
+  } catch (error) {
+    console.error(`❌ Failed to create order:`, {
+      status: error.response?.status,
+      data: error.response?.data,
+      sentData: orderData
+    });
+
+    let errorMsg = "Không thể tạo đơn hàng";
+    
+    if (error.response?.status === 404) {
+      errorMsg = "Backend không có API tạo đơn hàng. Kiểm tra OrderController và Spring Boot.";
+    } else if (error.response?.status === 400) {
+      const backendMsg = error.response?.data?.message || error.response?.data?.error;
+      errorMsg = `Dữ liệu đơn hàng không hợp lệ: ${backendMsg || "Kiểm tra format OrderCreationRequest"}`;
+      console.error("🔍 400 Error - Sent data vs Expected:", { sent: orderData, error: error.response?.data });
+    } else if (error.response?.status === 401) {
+      errorMsg = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
+    } else if (error.response?.status === 500) {
+      errorMsg = "Lỗi server backend. Kiểm tra Spring Boot logs.";
+    } else if (!error.response) {
+      errorMsg = "Không kết nối được backend. Kiểm tra Spring Boot có đang chạy không.";
     }
+    
+    throw new Error(errorMsg);
   }
-
-  // If all attempts fail, create mock order for demo
-  console.warn("🎭 All endpoints failed, creating mock order for demo...");
-  const mockOrder = {
-    id: `ORDER-${Date.now()}`,
-    status: "PENDING",
-    total: totals.total,
-    createdAt: new Date().toISOString(),
-    customerName: orderForm.fullName,
-    shippingAddress: `${orderForm.address}, ${orderForm.district}, ${orderForm.city}`,
-    items: cart,
-    message: "Đơn hàng được tạo thành công (Demo mode - Backend chưa sẵn sàng)"
-  };
-
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  return { data: mockOrder };
 };
