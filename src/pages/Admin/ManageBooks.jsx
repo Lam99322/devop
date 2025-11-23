@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import axiosClient from "../../api/axiosClient";
 import { FaPlus, FaEdit, FaTrash, FaBook, FaSpinner, FaSearch, FaFilter, FaEye } from "react-icons/fa";
 import { formatCurrency } from "../../utils/formatCurrency";
+import { getBookImageUrl, handleImageError } from "../../utils/imageUtils";
 import BookForm from "./Books/BookForm";
 import { AuthContext } from "../../context/AuthContext";
 import cookieUtils from "../../utils/cookieUtils";
@@ -334,12 +335,12 @@ export default function ManageBooks() {
                   {filteredBooks.map(book => (
                     <tr key={book.id} className="border-b border-gray-200 hover:bg-gray-50">
                       <td className="p-4">
-                        <div className="w-12 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded shadow-sm flex flex-col items-center justify-center text-xs text-blue-700 border">
-                          <div className="text-lg">📖</div>
-                          <div className="text-center leading-tight mt-1">
-                            {book.title.split(' ').slice(0, 2).join(' ').substring(0, 8)}
-                          </div>
-                        </div>
+                        <img
+                          src={getBookImageUrl(book)}
+                          alt={book.title}
+                          className="w-12 h-16 object-cover rounded shadow-sm border"
+                          onError={(e) => handleImageError(e, book.title)}
+                        />
                       </td>
                       <td className="p-4">
                         <h4 className="font-medium text-gray-800">{book.title}</h4>

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { FaBox, FaSpinner, FaEye, FaEdit, FaCheck, FaTimes } from "react-icons/fa";
+import { FaBox, FaSpinner, FaEye, FaEdit, FaCheck, FaTimes, FaCog } from "react-icons/fa";
 import { formatCurrency } from "../../utils/formatCurrency";
+import APITester from "../../components/APITester";
 
 export default function ManageOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAPITester, setShowAPITester] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -14,26 +16,53 @@ export default function ManageOrders() {
       setError(null);
       console.log("📦 Loading orders from backend...");
       
-      // Use correct endpoint from API docs
-      const res = await axiosClient.get("/orders/list");
-      console.log("✅ Orders API response:", res.data);
+      let res = null;
+      // Thử nhiều endpoint có thể có
+      const endpoints = ["/orders/list", "/orders", "/admin/orders", "/api/orders", "/orders/all"];
       
-      // Handle response structure
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔍 Trying endpoint: ${endpoint}`);
+          res = await axiosClient.get(endpoint);
+          console.log(`✅ Success with endpoint ${endpoint}:`, res.data);
+          break;
+        } catch (err) {
+          console.log(`❌ Failed endpoint ${endpoint}:`, err.response?.status, err.response?.data);
+        }
+      }
+      
+      if (!res) {
+        throw new Error("Không thể kết nối với bất kỳ endpoint nào");
+      }
+      
+      // Handle response structure với debug chi tiết
       let ordersData = [];
+      console.log("📋 Full response:", JSON.stringify(res.data, null, 2));
+      
       if (res.data) {
         if (Array.isArray(res.data)) {
           ordersData = res.data;
+          console.log("✅ Response is direct array");
         } else if (res.data.data && Array.isArray(res.data.data)) {
           ordersData = res.data.data;
+          console.log("✅ Response is wrapped in .data");
         } else if (res.data.content && Array.isArray(res.data.content)) {
           ordersData = res.data.content;
+          console.log("✅ Response is wrapped in .content (paginated)");
+        } else if (res.data.orders && Array.isArray(res.data.orders)) {
+          ordersData = res.data.orders;
+          console.log("✅ Response is wrapped in .orders");
+        } else if (res.data.result && Array.isArray(res.data.result)) {
+          ordersData = res.data.result;
+          console.log("✅ Response is wrapped in .result");
         } else {
-          console.warn("Unexpected orders response structure:", res.data);
+          console.warn("❌ Unexpected orders response structure:", res.data);
+          console.warn("Available keys:", Object.keys(res.data));
           ordersData = [];
         }
       }
       
-      console.log(`📦 Loaded ${ordersData.length} orders`);
+      console.log(`📦 Loaded ${ordersData.length} orders:`, ordersData);
       setOrders(ordersData);
       
       if (ordersData.length === 0) {
@@ -90,12 +119,21 @@ export default function ManageOrders() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <FaBox className="text-blue-600" />
-          Quản lý Đơn hàng
-        </h1>
-        <span className="text-gray-600">({ordersArray.length} đơn hàng)</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <FaBox className="text-blue-600" />
+            Quản lý Đơn hàng
+          </h1>
+          <span className="text-gray-600">({ordersArray.length} đơn hàng)</span>
+        </div>
+        <button
+          onClick={() => setShowAPITester(!showAPITester)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
+          <FaCog />
+          {showAPITester ? 'Ẩn' : 'Debug'} API
+        </button>
       </div>
 
       {/* Error Message */}
@@ -219,6 +257,13 @@ export default function ManageOrders() {
           </div>
         )}
       </div>
+
+      {/* API Tester */}
+      {showAPITester && (
+        <div className="border-t pt-6">
+          <APITester />
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
 import { formatCurrency } from "../utils/formatCurrency";
 import { submitOrder } from "../utils/orderUtils";
+import { getBookImageUrl, handleImageError } from "../utils/imageUtils";
 import { FaTrash, FaCreditCard, FaShippingFast, FaLock, FaCheckCircle, FaSpinner } from "react-icons/fa";
 
 export default function Checkout() {
@@ -318,15 +319,19 @@ export default function Checkout() {
             {cart.map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg">
                 <img
-                  src={item.thumbnail || item.bookThumbnail || `https://via.placeholder.com/60x80/f0f0f0/666666?text=${encodeURIComponent(item.title?.substring(0, 6) || 'Book')}`}
+                  src={getBookImageUrl(item)}
                   alt={item.title}
                   className="w-12 h-16 object-cover rounded"
-                  onError={(e) => {
-                    e.target.src = `https://via.placeholder.com/60x80/e5e7eb/6b7280?text=${encodeURIComponent(item.title?.substring(0, 6) || 'Book')}`;
-                  }}
+                  data-book-id={item.id}
+                  onError={(e) => handleImageError(e, item.title)}
                 />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
+                  <h4 className="font-medium text-sm" style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>{item.title}</h4>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-sm text-gray-600">SL: {item.quantity || 1}</span>
                     <span className="text-sm font-medium text-blue-600">

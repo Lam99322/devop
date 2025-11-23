@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axiosClient from "../../../api/axiosClient";
 import { FaSave, FaTimes, FaSpinner, FaBook, FaImage } from "react-icons/fa";
+import { getBookImageUrl, handleImageError } from "../../../utils/imageUtils";
 
 export default function BookForm({ book = null, onSaved, onCancel }) {
   const [form, setForm] = useState({
@@ -402,13 +403,21 @@ export default function BookForm({ book = null, onSaved, onCancel }) {
               Preview
             </label>
             <div className="flex justify-center">
-              <div className="w-20 h-28 bg-gradient-to-br from-green-100 to-green-200 rounded shadow-md border flex flex-col items-center justify-center text-green-700">
-                <div className="text-2xl mb-1">📚</div>
-                <div className="text-xs text-center leading-tight px-1">
-                  {(form.title || "Preview").substring(0, 12)}
+              {form.image || (book && (book.thumbnail || book.bookThumbnail)) ? (
+                <img
+                  src={form.image || getBookImageUrl(book)}
+                  alt="Preview"
+                  className="w-20 h-28 object-cover rounded shadow-md border"
+                  onError={(e) => handleImageError(e, form.title || "Preview")}
+                />
+              ) : (
+                <div className="w-20 h-28 bg-gradient-to-br from-green-100 to-green-200 rounded shadow-md border flex flex-col items-center justify-center text-green-700">
+                  <div className="text-2xl mb-1">📚</div>
+                  <div className="text-xs text-center leading-tight px-1">
+                    {(form.title || "Preview").substring(0, 12)}
+                  </div>
                 </div>
-                <div className="text-xs text-green-500 mt-1">Preview</div>
-              </div>
+              )}
             </div>
             {form.image && (
               <p className="text-xs text-gray-500 mt-1 text-center">

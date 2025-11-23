@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import { AuthContext } from "../context/AuthContext";
 import { formatCurrency } from "../utils/formatCurrency";
+import { getBookImageUrl, handleImageError } from "../utils/imageUtils";
 import { 
   FaBox, 
   FaShippingFast, 
@@ -318,12 +319,13 @@ export default function Orders() {
                     <div className="space-y-3">
                       {order.items?.map((item, index) => (
                         <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-12 h-16 bg-gradient-to-br from-pink-100 to-pink-200 rounded flex flex-col items-center justify-center text-pink-700 text-xs">
-                            <div className="text-sm">📚</div>
-                            <div className="text-center leading-tight px-1">
-                              {item.title?.substring(0, 6) || 'Book'}
-                            </div>
-                          </div>
+                          <img
+                            src={getBookImageUrl(item)}
+                            alt={item.title}
+                            className="w-12 h-16 object-cover rounded"
+                            data-book-id={item.id || item.bookId}
+                            onError={(e) => handleImageError(e, item.title)}
+                          />
                           <div className="flex-1">
                             <h5 className="font-medium text-gray-800">{item.title}</h5>
                             <div className="flex items-center gap-4 text-sm text-gray-600">

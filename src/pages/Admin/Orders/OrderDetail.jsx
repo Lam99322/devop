@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../../../api/axiosClient";
+import { getBookImageUrl, handleImageError } from "../../../utils/imageUtils";
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -65,12 +66,14 @@ export default function OrderDetail() {
         <ul className="divide-y">
           {(order.items || []).map((it)=>(
             <li key={it.id} className="py-2 flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded flex flex-col items-center justify-center text-indigo-700 text-xs">
-                <div className="text-lg">📚</div>
-                <div className="text-center leading-tight px-1">
-                  {it.title?.substring(0, 6) || 'Book'}
-                </div>
-              </div>
+              <img
+                src={`http://localhost:8080/bookstore/images/books/${it.thumbnail || it.bookThumbnail || 'default-book.jpg'}`}
+                alt={it.title}
+                className="w-16 h-16 object-cover rounded"
+                onError={(e) => {
+                  e.target.src = `https://via.placeholder.com/64x64/e5e7eb/6b7280?text=${encodeURIComponent(it.title?.substring(0, 6) || 'Book')}`;
+                }}
+              />
               <div>
                 <div className="font-semibold">{it.title || it.bookTitle}</div>
                 <div>Qty: {it.qty || it.quantity} — { (it.price || it.unitPrice)?.toLocaleString() } đ</div>

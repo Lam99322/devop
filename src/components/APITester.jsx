@@ -105,6 +105,25 @@ const APITester = () => {
             <button onClick={() => testAPI('GET', '/orders/list')} className="w-full bg-blue-500 text-white p-2 rounded">
               GET /orders/list
             </button>
+            <button onClick={() => testAPI('GET', '/orders')} className="w-full bg-blue-500 text-white p-2 rounded">
+              GET /orders
+            </button>
+            <button onClick={() => testAPI('GET', '/admin/orders')} className="w-full bg-blue-500 text-white p-2 rounded">
+              GET /admin/orders
+            </button>
+            <button onClick={() => testAPI('GET', '/api/orders')} className="w-full bg-blue-500 text-white p-2 rounded">
+              GET /api/orders
+            </button>
+            <button onClick={() => {
+              const testOrder = {
+                items: [{ id: 1, title: "Test Book", price: 100000, quantity: 1 }],
+                customerInfo: { fullName: "Test", email: "test@test.com", phone: "123", address: "Test" },
+                total: 100000
+              };
+              testAPI('POST', '/orders/create', testOrder);
+            }} className="w-full bg-green-500 text-white p-2 rounded">
+              POST /orders/create (Test Order)
+            </button>
           </div>
         </div>
 

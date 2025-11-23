@@ -1,6 +1,8 @@
 import { useContext } from "react";
 import { CartContext } from "../context/CartContext";
 import { Link } from "react-router-dom";
+import formatCurrency from "../utils/formatCurrency";
+import { getBookImageUrl, handleImageError } from "../utils/imageUtils";
 
 export default function Cart() {
   const { cart, removeFromCart, clearCart, updateQuantity } = useContext(CartContext);
@@ -31,18 +33,17 @@ export default function Cart() {
               >
                 {/* Ảnh sách */}
                 <img
-                  src={item.thumbnail || item.bookThumbnail || `https://via.placeholder.com/80x100/f0f0f0/666666?text=${encodeURIComponent(item.title?.substring(0, 6) || 'Book')}`}
+                  src={getBookImageUrl(item)}
                   alt={item.title}
                   className="w-20 h-24 object-cover rounded"
-                  onError={(e) => {
-                    e.target.src = `https://via.placeholder.com/80x100/e5e7eb/6b7280?text=${encodeURIComponent(item.title?.substring(0, 6) || 'Book')}`;
-                  }}
+                  data-book-id={item.id}
+                  onError={(e) => handleImageError(e, item.title)}
                 />
 
                 {/* Info */}
                 <div className="flex-1 ml-4">
                   <h3 className="text-lg font-semibold">{item.title}</h3>
-                  <p className="text-gray-600">${item.price}</p>
+                  <p className="text-gray-600">{formatCurrency(item.price)}</p>
 
                   {/* Tăng giảm số lượng */}
                   <div className="flex items-center mt-2">
@@ -79,7 +80,7 @@ export default function Cart() {
           {/* Tổng tiền + nút */}
           <div className="mt-6 p-4 bg-white shadow rounded-lg">
             <p className="text-xl font-bold">
-              Tổng cộng: <span className="text-green-600">${total.toFixed(2)}</span>
+              Tổng cộng: <span className="text-green-600">{formatCurrency(total)}</span>
             </p>
 
             <div className="mt-4 flex gap-3">
