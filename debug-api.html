@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Debug Tool</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        button { margin: 5px; padding: 10px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; }
+        .success { background: #e6ffe6; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Bookstore API Debug Tool</h1>
+    
+    <div>
+        <h3>Authentication</h3>
+        <button onclick="testLogin()">Test Login (Admin)</button>
+        <button onclick="checkToken()">Check Token</button>
+        <button onclick="clearToken()">Clear Token</button>
+    </div>
+
+    <div>
+        <h3>Categories API</h3>
+        <button onclick="testGetCategories()">GET /categories/list</button>
+        <button onclick="testCreateCategory()">POST /categories</button>
+        <button onclick="testUpdateCategory()">PUT /categories/1</button>
+        <button onclick="testDeleteCategory()">DELETE /categories/1</button>
+    </div>
+
+    <div>
+        <h3>Books API</h3>
+        <button onclick="testGetBooks()">GET /books</button>
+        <button onclick="testCreateBook()">POST /books</button>
+        <button onclick="testUpdateBook()">PUT /books/1</button>
+        <button onclick="testDeleteBook()">DELETE /books/1</button>
+    </div>
+
+    <div>
+        <h3>Orders API</h3>
+        <button onclick="testGetOrders()">GET /orders/list</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/bookstore';
+        
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong><br>${message}`;
+            document.getElementById('results').prepend(div);
+        }
+
+        function getAuthToken() {
+            return document.cookie.split(';').find(c => c.trim().startsWith('authToken='))?.split('=')[1];
+        }
+
+        async function apiRequest(method, endpoint, data = null) {
+            const token = getAuthToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const config = {
+                method,
+                headers,
+                ...(data && { body: JSON.stringify(data) })
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, config);
+                const result = await response.text();
+                
+                log(`${method} ${endpoint}<br>
+                    Status: ${response.status} ${response.statusText}<br>
+                    Response: <pre>${result}</pre>`);
+                
+                return { success: response.ok, status: response.status, data: result };
+            } catch (error) {
+                log(`${method} ${endpoint}<br>Error: ${error.message}`, true);
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function testLogin() {
+            const result = await apiRequest('POST', '/auth/login', {
+                username: 'admin',
+                password: 'admin123'
+            });
+            
+            if (result.success && result.data) {
+                try {
+                    const data = JSON.parse(result.data);
+                    if (data.token) {
+                        document.cookie = `authToken=${data.token}; path=/`;
+                        log('✅ Token saved to cookie');
+                    }
+                } catch (e) {
+                    log('⚠️ Could not parse login response');
+                }
+            }
+        }
+
+        function checkToken() {
+            const token = getAuthToken();
+            log(token ? `Token: ${token.substring(0, 50)}...` : 'No token found');
+        }
+
+        function clearToken() {
+            document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            log('Token cleared');
+        }
+
+        // Categories API Tests
+        async function testGetCategories() {
+            await apiRequest('GET', '/categories/list');
+        }
+
+        async function testCreateCategory() {
+            await apiRequest('POST', '/categories', {
+                name: 'Test Category',
+                slug: 'test-category'
+            });
+        }
+
+        async function testUpdateCategory() {
+            await apiRequest('PUT', '/categories/1', {
+                name: 'Updated Category',
+                slug: 'updated-category'
+            });
+        }
+
+        async function testDeleteCategory() {
+            await apiRequest('DELETE', '/categories/1');
+        }
+
+        // Books API Tests
+        async function testGetBooks() {
+            await apiRequest('GET', '/books');
+        }
+
+        async function testCreateBook() {
+            await apiRequest('POST', '/books', {
+                title: 'Test Book',
+                author: 'Test Author',
+                price: 100000,
+                category: 'Văn học',
+                stock: 10,
+                description: 'Test book description'
+            });
+        }
+
+        async function testUpdateBook() {
+            await apiRequest('PUT', '/books/1', {
+                title: 'Updated Book',
+                author: 'Updated Author',
+                price: 150000,
+                category: 'Văn học',
+                stock: 15,
+                description: 'Updated book description'
+            });
+        }
+
+        async function testDeleteBook() {
+            await apiRequest('DELETE', '/books/1');
+        }
+
+        // Orders API Tests
+        async function testGetOrders() {
+            await apiRequest('GET', '/orders/list');
+        }
+    </script>
+</body>
+</html>

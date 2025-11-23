@@ -135,9 +135,12 @@ export default function BookDetail() {
               SALE 10%
             </span>
             <img
-              src={book.thumbnail}
+              src={book.thumbnail || book.bookThumbnail || `https://via.placeholder.com/400x600/f0f0f0/666666?text=${encodeURIComponent(book.title?.substring(0, 15) || 'Book')}`}
               alt={book.title}
               className="w-full h-96 object-contain"
+              onError={(e) => {
+                e.target.src = `https://via.placeholder.com/400x600/e5e7eb/6b7280?text=${encodeURIComponent(book.title?.substring(0, 15) || 'Book')}`;
+              }}
             />
           </div>
         </div>
@@ -235,8 +238,12 @@ export default function BookDetail() {
               className="border rounded-lg p-3 hover:shadow-md transition"
             >
               <img
-                src={b.thumbnail}
+                src={b.thumbnail || b.bookThumbnail || `https://via.placeholder.com/150x200/f0f0f0/666666?text=${encodeURIComponent(b.title?.substring(0, 8) || 'Book')}`}
                 className="h-32 w-full object-contain mb-2"
+                alt={b.title}
+                onError={(e) => {
+                  e.target.src = `https://via.placeholder.com/150x200/e5e7eb/6b7280?text=${encodeURIComponent(b.title?.substring(0, 8) || 'Book')}`;
+                }}
               />
               <p className="font-semibold text-sm line-clamp-2">{b.title}</p>
               <p className="text-red-600 font-bold text-sm">

@@ -49,6 +49,12 @@ export default function AdminLayout() {
           <Link className="block p-2 hover:bg-gray-200 rounded" to="/admin/permissions">
             Permissions
           </Link>
+
+          <hr className="my-2" />
+          
+          <Link className="block p-2 hover:bg-gray-200 rounded text-purple-600 font-medium" to="/admin/api-test">
+            🔧 API Tester
+          </Link>
         </nav>
       </aside>
 

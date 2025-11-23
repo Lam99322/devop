@@ -65,7 +65,12 @@ export default function OrderDetail() {
         <ul className="divide-y">
           {(order.items || []).map((it)=>(
             <li key={it.id} className="py-2 flex items-center gap-4">
-              <img src={it.thumbnail || it.bookThumbnail} alt="" className="w-16 h-16 object-cover"/>
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded flex flex-col items-center justify-center text-indigo-700 text-xs">
+                <div className="text-lg">📚</div>
+                <div className="text-center leading-tight px-1">
+                  {it.title?.substring(0, 6) || 'Book'}
+                </div>
+              </div>
               <div>
                 <div className="font-semibold">{it.title || it.bookTitle}</div>
                 <div>Qty: {it.qty || it.quantity} — { (it.price || it.unitPrice)?.toLocaleString() } đ</div>

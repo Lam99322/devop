@@ -5,9 +5,12 @@ function BookCard({ book }) {
   return (
     <div className="border rounded p-3">
       <img
-        src={book.thumbnail}
+        src={book.thumbnail || book.bookThumbnail || `https://via.placeholder.com/200x300/f0f0f0/666666?text=${encodeURIComponent(book.title?.substring(0, 10) || 'Book')}`}
         alt={book.title}
-        className="w-full h-48 object-cover"
+        className="w-full h-48 object-cover rounded"
+        onError={(e) => {
+          e.target.src = `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(book.title?.substring(0, 10) || 'Book')}`;
+        }}
       />
       <h3 className="font-bold text-lg mt-2">{book.title}</h3>
       <p className="text-sm text-gray-600">{book.author}</p>

@@ -31,9 +31,12 @@ export default function Cart() {
               >
                 {/* Ảnh sách */}
                 <img
-                  src={item.image}
+                  src={item.thumbnail || item.bookThumbnail || `https://via.placeholder.com/80x100/f0f0f0/666666?text=${encodeURIComponent(item.title?.substring(0, 6) || 'Book')}`}
                   alt={item.title}
                   className="w-20 h-24 object-cover rounded"
+                  onError={(e) => {
+                    e.target.src = `https://via.placeholder.com/80x100/e5e7eb/6b7280?text=${encodeURIComponent(item.title?.substring(0, 6) || 'Book')}`;
+                  }}
                 />
 
                 {/* Info */}
