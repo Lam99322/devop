@@ -207,6 +207,54 @@ export default function Dashboard() {
             🚧 <strong>Demo Mode:</strong> Displaying mock data due to API access restrictions. 
             Real data will be shown when backend permissions are configured.
           </p>
+          
+          {/* Order Testing Debug Section */}
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-blue-800 text-sm font-medium mb-2">🛒 Order Debug Tools</p>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={async () => {
+                  const { testCreateOrder } = await import("../../utils/testOrders");
+                  console.log("🔍 Testing order creation...");
+                  const result = await testCreateOrder(user);
+                  console.table(result);
+                  alert(`Order creation test completed. Check console for details.`);
+                }}
+                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+              >
+                Test Create Order
+              </button>
+              <button 
+                onClick={async () => {
+                  const { testOrderRetrieval } = await import("../../utils/testOrders");
+                  console.log("🔍 Testing order retrieval...");
+                  const result = await testOrderRetrieval(user);
+                  console.table(result);
+                  const workingEndpoints = result.filter(r => r.success && r.hasContent);
+                  alert(`Found ${workingEndpoints.length} working endpoints with orders. Check console for details.`);
+                }}
+                className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+              >
+                Test Get Orders
+              </button>
+              <button 
+                onClick={async () => {
+                  const { fullOrderTest } = await import("../../utils/testOrders");
+                  console.log("🔍 Running full order test...");
+                  const result = await fullOrderTest(user);
+                  console.log("Full order test result:", result);
+                  if (result.success) {
+                    alert(`✅ Full test passed!\nOrder ID: ${result.summary.orderId}\nBest endpoint: ${result.summary.bestRetrieveEndpoint}`);
+                  } else {
+                    alert(`❌ Full test failed: ${result.error}`);
+                  }
+                }}
+                className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
+              >
+                Full Order Test
+              </button>
+            </div>
+          </div>
           {user && (
             <p className="text-blue-800 text-sm">
               👤 <strong>Current User:</strong> {user.username} | 
@@ -239,6 +287,111 @@ export default function Dashboard() {
           <p className="text-2xl font-semibold text-green-600">
             {stats.revenue.toLocaleString()} đ
           </p>
+        </div>
+      </div>
+
+      {/* Backend Test Section */}
+      <div className="bg-white p-4 rounded shadow mb-6">
+        <h3 className="text-lg font-semibold mb-4">🔧 Backend Testing</h3>
+        <div className="flex gap-4 flex-wrap">
+          <button
+            onClick={async () => {
+              console.log("🚀 Running backend connectivity test...");
+              const { runFullBackendTest } = await import("../../utils/backendTest");
+              const results = await runFullBackendTest();
+              
+              alert(`Backend Test Results:
+              
+🌐 Connectivity: ${results.connectivity.filter(r => r.status === 'SUCCESS').length}/${results.connectivity.length} endpoints working
+📦 Order Creation: ${results.orderCreation.success ? 'SUCCESS' : 'FAILED'}
+📋 Order Retrieval: ${results.orderRetrieval.success ? 'SUCCESS' : 'FAILED'}
+
+Check console for detailed logs.`);
+            }}
+            className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            🔍 Test Backend Connection
+          </button>
+          
+          <button
+            onClick={async () => {
+              console.log("🛒 Testing order creation...");
+              const { testOrderCreation } = await import("../../utils/backendTest");
+              const result = await testOrderCreation();
+              
+              if (result.success) {
+                alert("✅ Order creation successful! Check console for details.");
+              } else {
+                alert(`❌ Order creation failed: ${result.error}`);
+              }
+            }}
+            className="bg-green-500 hover:bg-green-700 text-white px-4 py-2 rounded"
+          >
+            🛒 Test Order Creation
+          </button>
+          
+          <button
+            onClick={async () => {
+              console.log("📋 Testing order retrieval...");
+              const { testOrderRetrieval } = await import("../../utils/backendTest");
+              const result = await testOrderRetrieval();
+              
+              if (result.success) {
+                alert(`✅ Orders retrieved from: ${result.endpoint}`);
+              } else {
+                alert("❌ No working order endpoints found");
+              }
+            }}
+            className="bg-purple-500 hover:bg-purple-700 text-white px-4 py-2 rounded"
+          >
+            📋 Test Order Retrieval
+          </button>
+          
+          <button
+            onClick={async () => {
+              console.log("🔍 Running connection debug...");
+              const { testConnection, quickDebug } = await import("../../utils/connectionTest");
+              
+              await testConnection();
+              await quickDebug();
+              
+              alert("🔍 Debug completed! Check console for detailed results.");
+            }}
+            className="bg-orange-500 hover:bg-orange-700 text-white px-4 py-2 rounded"
+          >
+            🔍 Debug Connection
+          </button>
+          
+          <button
+            onClick={async () => {
+              console.log("🔍 Checking backend connection...");
+              const { checkBackendConnection, verifyOrderController } = await import("../../utils/backendCheck");
+              
+              // Check connection and CORS
+              const connectionResult = await checkBackendConnection();
+              console.log("📋 Connection result:", connectionResult);
+              
+              // Verify OrderController endpoints
+              const controllerResult = await verifyOrderController();
+              console.log("📋 Controller verification:", controllerResult);
+              
+              const workingEndpoints = controllerResult.filter(r => r.available).length;
+              
+              alert(`🔍 Backend Check Results:
+              
+🌐 Connection: ${connectionResult.connected ? 'OK' : 'FAILED'}
+🎯 CORS: ${connectionResult.corsAllowed ? 'OK' : 'BLOCKED'}
+📋 OrderController: ${workingEndpoints}/${controllerResult.length} endpoints working
+📊 Response Structure: ${connectionResult.hasApiResponse ? 'ApiResponse OK' : 'Wrong structure'}
+
+${connectionResult.issue ? 'Issue: ' + connectionResult.issue : ''}
+
+Check console for detailed logs.`);
+            }}
+            className="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded"
+          >
+            🔍 Check Backend
+          </button>
         </div>
       </div>
 

@@ -22,7 +22,10 @@ import AdminLayout from "../layouts/AdminLayout";
 import Dashboard from "../pages/Admin/Dashboard";
 import ManageBooks from "../pages/Admin/ManageBooks";
 import ManageOrders from "../pages/Admin/ManageOrders";
-import CategoriesList from "../pages/Admin/Categories/CategoriesList";
+import ManageUsers from "../pages/Admin/ManageUsers";
+import ManageCategories from "../pages/Admin/ManageCategories";
+import ApiTester from "../pages/Admin/ApiTester";
+import ManageRoles from "../pages/Admin/ManageRoles";
 
 // ROUTE GUARDS
 import PrivateRoute from "./PrivateRoute";
@@ -89,9 +92,12 @@ export default function AppRoutes() {
       ),
       children: [
         { index: true, element: <Dashboard /> },
-        { path: "books", element: <ManageBooks /> },
+        { path: "users", element: <ManageUsers /> },
         { path: "orders", element: <ManageOrders /> },
-        { path: "categories", element: <CategoriesList /> },
+        { path: "books", element: <ManageBooks /> },
+        { path: "categories", element: <ManageCategories /> },
+        { path: "roles", element: <ManageRoles /> },
+        { path: "api-test", element: <ApiTester /> },
       ],
     },
 

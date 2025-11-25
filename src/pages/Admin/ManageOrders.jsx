@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { FaBox, FaSpinner, FaEye, FaEdit, FaCheck, FaTimes, FaSync } from "react-icons/fa";
+import { FaBox, FaSpinner, FaEye, FaSync } from "react-icons/fa";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 export default function ManageOrders() {
@@ -13,15 +13,20 @@ export default function ManageOrders() {
       setLoading(true);
       setError(null);
       
-      // BaseURL đã có /bookstore, endpoint từ controller: GET /orders/list  
-      const res = await axiosClient.get("/orders/list");
+      console.log('📤 Loading orders from backend...');
+      const response = await axiosClient.get('/orders/list?pageNo=0&pageSize=100&sortBy=createdAt:desc');
       
-      // Backend: ApiResponse<PageResponse<Object>>
-      const ordersData = res.data?.data?.content || [];
-      console.log('📦 Orders received:', ordersData);
+      console.log('✅ Orders response:', response.data);
+      
+      // Extract orders from backend response structure
+      const ordersData = response.data?.data?.content || [];
+      
+      console.log(`📦 Found ${ordersData.length} orders`);
       setOrders(ordersData);
+      
     } catch (err) {
-      setError("Không thể tải danh sách đơn hàng");
+      console.error('❌ Failed to load orders:', err);
+      setError(`Không thể tải đơn hàng: ${err.response?.data?.message || err.message}`);
       setOrders([]);
     } finally {
       setLoading(false);
@@ -54,7 +59,6 @@ export default function ManageOrders() {
     }
   };
 
-  // Ensure orders is array
   const ordersArray = Array.isArray(orders) ? orders : [];
 
   return (
@@ -74,7 +78,7 @@ export default function ManageOrders() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
           <FaSync className={loading ? 'animate-spin' : ''} />
-          Tải lại
+          Tải lại đơn hàng
         </button>
       </div>
 
@@ -98,7 +102,20 @@ export default function ManageOrders() {
           </div>
         ) : ordersArray.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-gray-600">Chưa có đơn hàng nào.</p>
+            <div className="mb-4">
+              <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg mb-2">Chưa có đơn hàng nào trong hệ thống</p>
+              <p className="text-gray-400 text-sm">Khách hàng chưa đặt hàng hoặc backend chưa kết nối được</p>
+            </div>
+            <div className="space-y-2 text-sm text-gray-500">
+              <p>💡 Hướng dẫn:</p>
+              <ul className="text-left list-disc list-inside space-y-1 max-w-md mx-auto">
+                <li>Kiểm tra Spring Boot backend có đang chạy không</li>
+                <li>Đảm bảo đã đăng nhập với tài khoản admin</li>
+                <li>Kiểm tra database có dữ liệu đơn hàng không</li>
+                <li>Click "Tải lại đơn hàng" để refresh</li>
+              </ul>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -157,7 +174,6 @@ export default function ManageOrders() {
                             if (confirm(`Cập nhật trạng thái đơn hàng ${order.id} thành "${getStatusText(newStatus)}"?`)) {
                               try {
                                 await axiosClient.patch(`/orders/${order.id}/status?status=${newStatus}`);
-                                // Reload orders after update
                                 loadOrders();
                               } catch (error) {
                                 alert("Không thể cập nhật trạng thái: " + error.message);

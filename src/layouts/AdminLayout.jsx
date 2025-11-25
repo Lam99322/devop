@@ -1,6 +1,7 @@
 // src/layouts/AdminLayout.jsx
 import React from "react";
 import { Link, Outlet } from "react-router-dom";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 export default function AdminLayout() {
   return (
@@ -60,7 +61,9 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <main className="flex-1 p-6">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

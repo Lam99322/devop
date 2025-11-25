@@ -28,8 +28,8 @@ export default function ManageBooks() {
       const token = document.cookie.split(';').find(c => c.trim().startsWith('authToken='));
       console.log("🔐 Has auth token:", !!token);
       
-      // Use admin endpoint to get ALL books (requires ADMIN role)
-      console.log(`🔍 Making request to /books...`);
+      // Use exact backend endpoint: GET /books (ADMIN: Get all books)
+      console.log(`🔍 Making request to /books (admin endpoint)...`);
       const res = await axiosClient.get("/books");
       console.log(`✅ API Response:`, {
         status: res.status,

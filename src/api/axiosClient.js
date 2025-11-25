@@ -9,6 +9,13 @@ const axiosClient = axios.create({
 
 // Thêm token vào header Authorization nếu có
 axiosClient.interceptors.request.use((config) => {
+  console.log("📤 AxiosClient REQUEST:", {
+    method: config.method?.toUpperCase(),
+    url: `${config.baseURL}${config.url}`,
+    headers: config.headers,
+    data: config.data
+  });
+  
   const token = cookieUtils.getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -21,14 +28,37 @@ axiosClient.interceptors.request.use((config) => {
 
 // Xử lý response, tự động logout nếu 401
 axiosClient.interceptors.response.use(
-  (res) => res,
-  (error) => {
-    console.log("❌ AxiosClient Response Error:", {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-      headers: error.response?.headers
+  (res) => {
+    console.log("📥 AxiosClient SUCCESS RESPONSE:", {
+      method: res.config?.method?.toUpperCase(),
+      url: `${res.config?.baseURL}${res.config?.url}`,
+      status: res.status,
+      statusText: res.statusText,
+      dataType: typeof res.data,
+      dataStructure: res.data ? Object.keys(res.data) : null,
+      data: res.data
     });
+    return res;
+  },
+  async (error) => {
+    console.log("❌ AxiosClient ERROR RESPONSE:", {
+      method: error.config?.method?.toUpperCase(),
+      url: `${error.config?.baseURL}${error.config?.url}`,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers,
+      message: error.message
+    });
+    
+    // Use error analysis utility for detailed logging
+    try {
+      const { analyzeError } = await import("../utils/errorAnalysis");
+      const analysis = analyzeError(error, `${error.config?.method?.toUpperCase()} ${error.config?.url}`);
+      console.log("💡 Suggestion:", analysis.suggestion);
+    } catch (importError) {
+      console.log("⚠️ Could not import error analysis utility");
+    }
     
     if (error.response?.status === 401) {
       cookieUtils.removeAuthToken();

@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
-import bookApi from "../api/bookApi";
+import axiosClient from "../api/axiosClient";
+import API_ENDPOINTS from "../constants/apiEndpoints";
 import BookCard from "../components/BookCard/BookCard";
 
 function Books() {
   const [books, setBooks] = useState([]);
 
   useEffect(() => {
-    bookApi.getAll()
+    // Use exact backend endpoint: GET /books/list (Get all books with status ACTIVE)
+    axiosClient.get(API_ENDPOINTS.BOOKS.GET_ALL_PUBLIC)
       .then((res) => {
-        console.log("Books from backend:", res.data);
-        setBooks(res.data.data || res.data);
+        console.log("✅ Public books from backend:", res.data);
+        
+        // Handle ApiResponse structure
+        let booksData = [];
+        if (res.data?.data && Array.isArray(res.data.data)) {
+          booksData = res.data.data;
+        } else if (Array.isArray(res.data)) {
+          booksData = res.data;
+        }
+        
+        setBooks(booksData);
+        console.log(`📚 Loaded ${booksData.length} active books for public`);
       })
       .catch((err) => {
-        console.error("Error fetching books", err);
+        console.error("❌ Error fetching public books:", err);
       });
   }, []);
 

@@ -71,32 +71,55 @@ export default function Orders() {
         }
         
         console.log(`🔍 Fetching orders for user: ${user.id}`);
-        const res = await axiosClient.get(`/orders/list/user/${user.id}`);
         
-        console.log("✅ Orders response:", res.data);
-        console.log("🔍 Response data type:", typeof res.data?.data);
-        console.log("🔍 Response data keys:", res.data?.data ? Object.keys(res.data.data) : 'no data');
+        // Try multiple endpoints to find user orders
+        const endpoints = [
+          `/orders/user/${user.id}`,           // Most likely endpoint
+          `/orders/list/user/${user.id}`,      // Current endpoint
+          `/api/orders/user/${user.id}`,       // With /api prefix
+          `/orders?userId=${user.id}`,         // Query parameter
+          `/orders/list?userId=${user.id}`     // List with query
+        ];
         
-        // Handle different response structures
         let ordersData = [];
-        if (res.data?.data) {
-          if (Array.isArray(res.data.data)) {
-            console.log("📋 Using res.data.data as array");
-            ordersData = res.data.data;
-          } else if (res.data.data.items && Array.isArray(res.data.data.items)) {
-            console.log("📋 Using res.data.data.items (pagination)");
-            ordersData = res.data.data.items;
-          } else if (res.data.data.content && Array.isArray(res.data.data.content)) {
-            console.log("📋 Using res.data.data.content");
-            ordersData = res.data.data.content;
-          } else if (res.data.data.orders && Array.isArray(res.data.data.orders)) {
-            console.log("📋 Using res.data.data.orders");
-            ordersData = res.data.data.orders;
-          } else {
-            console.warn("⚠️ Unexpected response structure:", res.data.data);
-            console.warn("Available keys:", Object.keys(res.data.data || {}));
-            ordersData = [];
+        let success = false;
+        
+        for (const endpoint of endpoints) {
+          try {
+            console.log(`📤 Trying: GET ${endpoint}`);
+            const res = await axiosClient.get(endpoint);
+            console.log(`✅ Success with ${endpoint}:`, res.data);
+            
+            // Handle different response structures
+            if (res.data?.data) {
+              if (Array.isArray(res.data.data)) {
+                console.log("📋 Using res.data.data as array");
+                ordersData = res.data.data;
+              } else if (res.data.data.content && Array.isArray(res.data.data.content)) {
+                console.log("📋 Using res.data.data.content (Spring Boot Page)");
+                ordersData = res.data.data.content;
+              } else if (res.data.data.items && Array.isArray(res.data.data.items)) {
+                console.log("📋 Using res.data.data.items (pagination)");
+                ordersData = res.data.data.items;
+              } else {
+                console.warn("⚠️ Unexpected response structure:", res.data.data);
+                ordersData = [];
+              }
+            } else if (Array.isArray(res.data)) {
+              console.log("📋 Using res.data directly as array");
+              ordersData = res.data;
+            }
+            
+            success = true;
+            break;
+          } catch (endpointError) {
+            console.log(`❌ Failed ${endpoint}:`, endpointError.response?.status);
+            continue;
           }
+        }
+        
+        if (!success) {
+          throw new Error("All order endpoints failed");
         }
         
         console.log("📦 Processed orders data:", ordersData);
