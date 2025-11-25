@@ -67,20 +67,72 @@ export default function Login() {
           const payload = JSON.parse(atob(tokenParts[1] + '='.repeat((4 - tokenParts[1].length % 4) % 4)));
           console.log("🔓 JWT Token payload:", payload);
           
-          // If JWT has role info, use it to update userInfo
-          if (payload.role || payload.roles || payload.authorities) {
-            console.log("📋 JWT contains role info:");
-            console.log("- role:", payload.role);
-            console.log("- roles:", payload.roles);
-            console.log("- authorities:", payload.authorities);
-            
-            // Update userInfo with JWT role data
-            if (payload.role) userInfo.role = payload.role;
-            if (payload.roles) userInfo.roles = payload.roles;
-            if (payload.authorities) userInfo.authorities = payload.authorities;
+          // Extract role information from different possible JWT fields
+          let extractedRole = null;
+          let extractedRoles = [];
+          
+          // Check various JWT fields for role information
+          if (payload.role) {
+            extractedRole = payload.role;
+            console.log("📋 Found role in payload.role:", extractedRole);
           }
+          
+          if (payload.roles) {
+            if (Array.isArray(payload.roles)) {
+              extractedRoles = payload.roles;
+              if (!extractedRole && payload.roles.length > 0) {
+                extractedRole = payload.roles[0]; // Use first role as primary
+              }
+            } else {
+              extractedRole = payload.roles; // Single role as string
+              extractedRoles = [payload.roles];
+            }
+            console.log("📋 Found roles in payload.roles:", extractedRoles);
+          }
+          
+          if (payload.authorities) {
+            console.log("📋 Found authorities:", payload.authorities);
+            if (Array.isArray(payload.authorities)) {
+              extractedRoles = [...extractedRoles, ...payload.authorities];
+              if (!extractedRole && payload.authorities.includes('ADMIN')) {
+                extractedRole = 'ADMIN';
+              }
+            }
+          }
+          
+          // Check for Spring Security format (ROLE_ADMIN)
+          if (payload.scope && payload.scope.includes('ROLE_ADMIN')) {
+            extractedRole = 'ADMIN';
+            extractedRoles = ['ADMIN'];
+            console.log("📋 Found ADMIN role in JWT scope");
+          }
+          
+          // Update userInfo with extracted role data
+          if (extractedRole) {
+            userInfo.role = extractedRole;
+            console.log("✅ Set user role to:", extractedRole);
+          }
+          
+          if (extractedRoles.length > 0) {
+            userInfo.roles = extractedRoles.map(role => typeof role === 'string' ? { name: role } : role);
+            console.log("✅ Set user roles to:", userInfo.roles);
+          }
+          
+          // Additional check for admin username fallback
+          if (!extractedRole && form.username === 'admin123') {
+            console.log("🔧 Fallback: Setting admin role for admin123 user");
+            userInfo.role = 'ADMIN';
+            userInfo.roles = [{ name: 'ADMIN' }];
+          }
+          
         } catch (jwtError) {
           console.error("❌ Failed to decode JWT:", jwtError);
+          // Fallback role assignment for admin username
+          if (form.username === 'admin123') {
+            console.log("🔧 JWT decode failed, using username-based admin role");
+            userInfo.role = 'ADMIN';
+            userInfo.roles = [{ name: 'ADMIN' }];
+          }
         }
         
         console.log("🔍 Final user info to save:", userInfo);

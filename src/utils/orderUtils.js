@@ -92,6 +92,26 @@ export const submitOrder = async ({ orderForm, cart, total: totals, user }) => {
     console.log("📤 Sending EXACT OrderCreationRequest to backend...");
     const response = await axiosClient.post('/orders', orderCreationRequest);
     console.log("✅ OrderCreationRequest SUCCESS:", response.data);
+    
+    // Cache the new order for the current user
+    if (actualUserId && response.data) {
+      try {
+        const cachedOrders = localStorage.getItem(`userOrders_${actualUserId}`);
+        const userOrders = cachedOrders ? JSON.parse(cachedOrders) : [];
+        
+        // Add the new order to the beginning of the list
+        userOrders.unshift(response.data);
+        
+        // Keep only the last 50 orders to avoid localStorage bloat
+        const limitedOrders = userOrders.slice(0, 50);
+        
+        localStorage.setItem(`userOrders_${actualUserId}`, JSON.stringify(limitedOrders));
+        console.log(`💾 Added new order to user ${actualUserId} cache. Total cached: ${limitedOrders.length}`);
+      } catch (cacheError) {
+        console.warn("Failed to cache new order:", cacheError);
+      }
+    }
+    
     return {
       success: true,
       data: response.data,

@@ -5,7 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 import { formatCurrency } from "../utils/formatCurrency";
 import { submitOrder } from "../utils/orderUtils";
 import { getBookImageUrl, handleImageError } from "../utils/imageUtils";
-import { FaTrash, FaCreditCard, FaShippingFast, FaShoppingCart, FaSpinner, FaCheckCircle } from "react-icons/fa";
+import { FaTrash, FaCreditCard, FaShippingFast, FaShoppingCart, FaSpinner, FaCheckCircle, FaBox } from "react-icons/fa";
 
 export default function Checkout() {
   const { cart, clearCart, removeFromCart } = useContext(CartContext);
@@ -119,12 +119,21 @@ export default function Checkout() {
                 <p>Tổng tiền: <span className="font-semibold text-red-600">{formatCurrency(orderData.total)}</span></p>
               </div>
             )}
-            <button 
-              onClick={() => navigate('/')}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition duration-300"
-            >
-              Về trang chủ
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button 
+                onClick={() => navigate('/orders')}
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition duration-300 flex items-center gap-2"
+              >
+                <FaBox />
+                Xem đơn hàng của tôi
+              </button>
+              <button 
+                onClick={() => navigate('/books')}
+                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition duration-300"
+              >
+                Tiếp tục mua sắm
+              </button>
+            </div>
           </div>
         </div>
       </div>

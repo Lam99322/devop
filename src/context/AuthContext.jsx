@@ -86,20 +86,23 @@ export function AuthProvider({ children }) {
     cookieUtils.setAuthToken(jwt);
     setToken(jwt);
     
-    // Ensure userData has all required fields
+    // Use provided userData directly, with minimal fallbacks
     const userInfo = {
-      id: 'd11f3cf0-4173-4751-9daa-ccde558c5303',
-      username: 'admin123',
-      name: 'Trần Thị Kiều Vy',
-      email: 'Vy@donga.edu.vn',
-      avatar: 'https://ui-avatars.com/api/?background=random&rounded=true&bold=true&name=Trần+Thị+Kiều+Vy',
-      status: 'ACTIVE',
-      role: 'ADMIN',
-      roles: [{ name: 'ADMIN' }],
-      ...userData // Merge any provided user data
+      ...userData, // Use whatever was provided from login
+      // Only add fallbacks for missing critical fields
+      avatar: userData.avatar || `https://ui-avatars.com/api/?background=random&rounded=true&bold=true&name=${encodeURIComponent(userData.name || userData.username || 'User')}`,
+      status: userData.status || 'ACTIVE',
+      // Preserve role information exactly as provided from login
+      role: userData.role,
+      roles: userData.roles
     };
     
-    console.log("✅ AuthContext: Setting user:", userInfo);
+    console.log("✅ AuthContext: Setting user with roles:", {
+      id: userInfo.id,
+      username: userInfo.username, 
+      role: userInfo.role,
+      roles: userInfo.roles
+    });
     setUser(userInfo);
   };
 

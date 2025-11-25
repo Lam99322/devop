@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import { AuthContext } from "../context/AuthContext";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -13,12 +13,14 @@ import {
   FaEye,
   FaArrowLeft,
   FaReceipt,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaSync
 } from "react-icons/fa";
 
 export default function Orders() {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,25 +72,54 @@ export default function Orders() {
           return;
         }
         
-        console.log(`🔍 Fetching orders for user: ${user.id}`);
+        // Check if we need to force refresh (coming from checkout)
+        const forceRefresh = location.state?.forceRefresh || location.state?.fromCheckout;
+        if (forceRefresh) {
+          console.log("🔄 Force refresh triggered from checkout - clearing all caches");
+          // Clear all possible caches
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('userOrders_') || key.includes('orders')) {
+              localStorage.removeItem(key);
+            }
+          });
+          // Clear navigation state
+          navigate(location.pathname, { replace: true });
+        }
         
-        // Try multiple endpoints to find user orders
+        console.log(`🔍 Fetching orders for user: ${user.id}${forceRefresh ? ' (FORCE REFRESH)' : ''}`);
+        
+        // Get correct userId from /users/me API first
+        let actualUserId = null;
+        try {
+          console.log("🔍 Getting userId from /users/me API...");
+          const userResponse = await axiosClient.get('/users/me');
+          actualUserId = userResponse.data?.data?.id;
+          console.log("✅ Got userId from API:", actualUserId);
+        } catch (error) {
+          console.error("❌ Failed to get user info:", error.response?.data);
+          actualUserId = user.id; // Fallback to context user id
+        }
+
+        // Try multiple endpoints to find user orders (prioritize working endpoint)
         const endpoints = [
-          `/orders/user/${user.id}`,           // Most likely endpoint
-          `/orders/list/user/${user.id}`,      // Current endpoint
-          `/api/orders/user/${user.id}`,       // With /api prefix
-          `/orders?userId=${user.id}`,         // Query parameter
-          `/orders/list?userId=${user.id}`     // List with query
+          `/orders/list/user/${actualUserId}`,      // This one works! (from log)
+          `/orders/user/${actualUserId}`,           // Standard REST endpoint
+          `/api/orders/user/${actualUserId}`,       // With /api prefix
+          `/orders?userId=${actualUserId}`,         // Query parameter
+          `/orders/list?userId=${actualUserId}`     // List with query
         ];
         
         let ordersData = [];
         let success = false;
+        let successResponse = null;
         
         for (const endpoint of endpoints) {
           try {
             console.log(`📤 Trying: GET ${endpoint}`);
             const res = await axiosClient.get(endpoint);
             console.log(`✅ Success with ${endpoint}:`, res.data);
+            
+            successResponse = res; // Store successful response
             
             // Handle different response structures
             if (res.data?.data) {
@@ -110,6 +141,43 @@ export default function Orders() {
               ordersData = res.data;
             }
             
+            // STRICT FILTERING: Ensure we ONLY show orders for current user
+            if (ordersData.length > 0) {
+              console.log("🔍 Raw orders received:", ordersData.length);
+              console.log("🔍 Sample order structure:", JSON.stringify(ordersData[0], null, 2));
+              console.log("🔍 All order userIds:", ordersData.map(o => ({id: o.id, userId: o.userId})));
+              console.log("🔍 Current user ID (must match):", actualUserId);
+              
+              const beforeFilter = ordersData.length;
+              
+              // STRICT filter - only show orders that belong to current user
+              ordersData = ordersData.filter(order => {
+                // Check all possible userId fields
+                const orderUserId = order.userId || order.customerId || order.user?.id;
+                
+                // Log each order's userId for debugging
+                console.log(`🔍 Order ${order.id}: userId="${orderUserId}" vs expected="${actualUserId}"`);
+                
+                // Strict string comparison
+                const match = String(orderUserId) === String(actualUserId);
+                
+                if (!match) {
+                  console.log(`❌ FILTERED OUT: Order ${order.id} (userId: ${orderUserId}) does not belong to user ${actualUserId}`);
+                }
+                
+                return match;
+              });
+              
+              console.log(`🔍 FILTERING RESULT: ${beforeFilter} orders → ${ordersData.length} orders for user ${actualUserId}`);
+              
+              // Log final result
+              if (ordersData.length > 0) {
+                console.log(`✅ Showing ${ordersData.length} orders for current user`);
+              } else {
+                console.log(`ℹ️ No orders found for user ${actualUserId} - showing empty state`);
+              }
+            }
+            
             success = true;
             break;
           } catch (endpointError) {
@@ -118,46 +186,108 @@ export default function Orders() {
           }
         }
         
+        // Final fallback: try to get all orders and filter by userId
+        if (!success) {
+          console.log("🔄 Trying fallback: Get all orders and filter by userId...");
+          try {
+            const response = await axiosClient.get('/orders/list?pageNo=0&pageSize=1000&sortBy=createdAt:desc');
+            const allOrders = response.data?.data?.content || response.data?.data || [];
+            console.log("📋 Got all orders, filtering by userId:", actualUserId);
+            
+            // STRICT fallback filtering by userId
+            console.log(`🔄 Fallback: Got ${allOrders.length} total orders, filtering for user ${actualUserId}`);
+            
+            ordersData = allOrders.filter(order => {
+              const orderUserId = order.userId || order.customerId || order.user?.id;
+              const match = String(orderUserId) === String(actualUserId);
+              
+              if (!match) {
+                console.log(`❌ FALLBACK FILTERED: Order ${order.id} (userId: ${orderUserId}) ≠ ${actualUserId}`);
+              }
+              
+              return match;
+            });
+            
+            console.log(`✅ Fallback result: ${ordersData.length} orders belong to user ${actualUserId}`);
+            success = true;
+          } catch (fallbackError) {
+            console.error("❌ Fallback also failed:", fallbackError);
+          }
+        }
+
         if (!success) {
           throw new Error("All order endpoints failed");
         }
         
         console.log("📦 Processed orders data:", ordersData);
-        console.log("📄 Pagination info:", {
-          pageNo: res.data.data?.pageNo,
-          pageSize: res.data.data?.pageSize,
-          totalPages: res.data.data?.totalPages,
-          totalElements: res.data.data?.totalElements
-        });
         
-        // If no orders from backend, check localStorage for mock orders
-        if (ordersData.length === 0) {
-          try {
-            const mockOrders = JSON.parse(localStorage.getItem('mockOrders') || '[]');
-            if (mockOrders.length > 0) {
-              console.log("📦 Using mock orders from localStorage:", mockOrders);
-              ordersData = mockOrders;
-            }
-          } catch (storageError) {
-            console.error("❌ Failed to load mock orders:", storageError);
+        // Log pagination info if available
+        if (successResponse) {
+          console.log("📄 Pagination info:", {
+            pageNo: successResponse.data.data?.pageNo,
+            pageSize: successResponse.data.data?.pageSize,
+            totalPages: successResponse.data.data?.totalPages,
+            totalElements: successResponse.data.data?.totalElements
+          });
+        }
+        
+        // FINAL VALIDATION: Ensure all orders belong to current user
+        if (ordersData.length > 0) {
+          const invalidOrders = ordersData.filter(order => {
+            const orderUserId = order.userId || order.customerId || order.user?.id;
+            return String(orderUserId) !== String(actualUserId);
+          });
+          
+          if (invalidOrders.length > 0) {
+            console.error(`🚨 SECURITY ISSUE: ${invalidOrders.length} orders don't belong to user ${actualUserId}!`);
+            // Remove invalid orders for security
+            ordersData = ordersData.filter(order => {
+              const orderUserId = order.userId || order.customerId || order.user?.id;
+              return String(orderUserId) === String(actualUserId);
+            });
           }
         }
         
+        // Additional safety: Store user's orders in localStorage for backup
+        if (ordersData.length > 0) {
+          try {
+            localStorage.setItem(`userOrders_${actualUserId}`, JSON.stringify(ordersData));
+            console.log(`💾 Cached ${ordersData.length} orders for user ${actualUserId} in localStorage`);
+          } catch (error) {
+            console.warn("Failed to cache user orders:", error);
+          }
+        }
+
+        console.log(`📦 FINAL RESULT: ${ordersData.length} valid orders for user ${actualUserId}`);
         setOrders(ordersData);
         
       } catch (err) {
         console.error("❌ Failed to fetch orders:", err);
-        console.warn("🎭 Using mock orders for demo");
         
-        setError(`API Error: ${err.response?.status || 'Unknown'} - Using demo data`);
-        setOrders(mockOrders);
+        // Final fallback: Try to get user's orders from localStorage
+        try {
+          const cachedOrders = localStorage.getItem(`userOrders_${actualUserId}`);
+          if (cachedOrders) {
+            const userOrders = JSON.parse(cachedOrders);
+            console.log(`📦 Using cached orders for user ${actualUserId}:`, userOrders.length);
+            setOrders(userOrders);
+            setError(`Đang offline - hiển thị ${userOrders.length} đơn hàng từ bộ nhớ cache`);
+            return;
+          }
+        } catch (cacheError) {
+          console.warn("Failed to load cached orders:", cacheError);
+        }
+        
+        console.log("ℹ️ No orders to display - user may not have placed any orders yet");
+        setError(`Không thể tải đơn hàng: ${err.response?.data?.message || err.message}`);
+        setOrders([]); // Show empty state, no mock orders
       } finally {
         setLoading(false);
       }
     };
     
     fetchOrders();
-  }, [user, navigate]);
+  }, [user, navigate, location.state]);
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
@@ -234,8 +364,31 @@ export default function Orders() {
           </button>
         </div>
         
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Đơn hàng của bạn</h1>
-        <p className="text-gray-600">Theo dõi trạng thái và lịch sử đơn hàng</p>
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Đơn hàng của bạn</h1>
+            <p className="text-gray-600 mt-1">Theo dõi trạng thái và lịch sử đơn hàng</p>
+          </div>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setOrders([]);
+              // Clear caches and force refresh
+              Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('userOrders_')) {
+                  localStorage.removeItem(key);
+                }
+              });
+              // Trigger useEffect by updating state
+              window.location.reload();
+            }}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+          >
+            <FaSync className={loading ? "animate-spin" : ""} />
+            {loading ? "Đang tải..." : "Làm mới"}
+          </button>
+        </div>
         
         {error && (
           <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">

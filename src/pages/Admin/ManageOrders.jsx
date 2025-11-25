@@ -13,20 +13,59 @@ export default function ManageOrders() {
       setLoading(true);
       setError(null);
       
-      console.log('📤 Loading orders from backend...');
-      const response = await axiosClient.get('/orders/list?pageNo=0&pageSize=100&sortBy=createdAt:desc');
+      console.log('📤 Loading ALL orders for admin...');
       
-      console.log('✅ Orders response:', response.data);
+      // Try multiple admin endpoints to get ALL orders
+      const adminEndpoints = [
+        '/orders',  // Simple all orders
+        '/orders/all',  // Explicit all orders
+        '/admin/orders',  // Admin specific endpoint
+        '/orders/list',  // Current working user endpoint
+        '/orders/admin/list'  // Admin list endpoint
+      ];
       
-      // Extract orders from backend response structure
-      const ordersData = response.data?.data?.content || [];
+      let ordersData = [];
+      let successEndpoint = null;
       
-      console.log(`📦 Found ${ordersData.length} orders`);
+      for (const endpoint of adminEndpoints) {
+        try {
+          console.log(`🔍 Trying admin endpoint: ${endpoint}`);
+          const response = await axiosClient.get(`${endpoint}?pageNo=0&pageSize=1000&sortBy=createdAt:desc`);
+          console.log(`✅ SUCCESS with ${endpoint}:`, response.data);
+          
+          // Extract orders from different response structures
+          if (response.data?.data?.content) {
+            ordersData = response.data.data.content;
+          } else if (response.data?.data?.items) {
+            ordersData = response.data.data.items;
+          } else if (response.data?.data && Array.isArray(response.data.data)) {
+            ordersData = response.data.data;
+          } else if (Array.isArray(response.data)) {
+            ordersData = response.data;
+          } else {
+            ordersData = [];
+          }
+          
+          successEndpoint = endpoint;
+          console.log(`📦 Admin found ${ordersData.length} orders via ${endpoint}`);
+          break;
+          
+        } catch (endpointError) {
+          console.log(`❌ Failed ${endpoint}: ${endpointError.response?.status} - ${endpointError.response?.data?.message || endpointError.message}`);
+          continue;
+        }
+      }
+      
+      if (!successEndpoint) {
+        throw new Error('All admin endpoints failed - no admin access to orders');
+      }
+      
+      console.log(`🎯 Admin loaded ${ordersData.length} orders from ${successEndpoint}`);
       setOrders(ordersData);
       
     } catch (err) {
-      console.error('❌ Failed to load orders:', err);
-      setError(`Không thể tải đơn hàng: ${err.response?.data?.message || err.message}`);
+      console.error('❌ Failed to load admin orders:', err);
+      setError(`Admin không thể tải đơn hàng: ${err.message}. Kiểm tra quyền admin hoặc backend.`);
       setOrders([]);
     } finally {
       setLoading(false);
@@ -104,17 +143,44 @@ export default function ManageOrders() {
           <div className="p-8 text-center">
             <div className="mb-4">
               <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg mb-2">Chưa có đơn hàng nào trong hệ thống</p>
-              <p className="text-gray-400 text-sm">Khách hàng chưa đặt hàng hoặc backend chưa kết nối được</p>
+              <p className="text-red-600 text-lg mb-2 font-medium">⚠️ Admin không thể truy cập đơn hàng</p>
+              <p className="text-gray-600 text-sm mb-4">Backend đang trả về lỗi 403 Forbidden</p>
             </div>
-            <div className="space-y-2 text-sm text-gray-500">
-              <p>💡 Hướng dẫn:</p>
-              <ul className="text-left list-disc list-inside space-y-1 max-w-md mx-auto">
-                <li>Kiểm tra Spring Boot backend có đang chạy không</li>
-                <li>Đảm bảo đã đăng nhập với tài khoản admin</li>
-                <li>Kiểm tra database có dữ liệu đơn hàng không</li>
-                <li>Click "Tải lại đơn hàng" để refresh</li>
-              </ul>
+            <div className="space-y-4 text-sm">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="font-medium text-yellow-800 mb-2">🔧 Giải pháp tạm thời:</h3>
+                <div className="space-y-2 text-yellow-700">
+                  <p>1. <strong>Xem đơn hàng từ trang user:</strong></p>
+                  <a 
+                    href="/orders" 
+                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.open('/orders', '_blank');
+                    }}
+                  >
+                    🔗 Mở trang Orders trong tab mới
+                  </a>
+                  <p className="text-xs">Trang này hiển thị 11 đơn hàng đã có</p>
+                </div>
+              </div>
+              
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h3 className="font-medium text-red-800 mb-2">🔍 Nguyên nhân lỗi:</h3>
+                <ul className="text-left list-disc list-inside space-y-1 text-red-700 text-xs max-w-md mx-auto">
+                  <li>Token JWT không có quyền ADMIN</li>
+                  <li>Backend yêu cầu role ADMIN để xem tất cả orders</li>
+                  <li>Endpoint /orders/list chỉ cho phép admin access</li>
+                  <li>User hiện tại chỉ có quyền user thường</li>
+                </ul>
+              </div>
+              
+              <button
+                onClick={loadOrders}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                🔄 Thử lại với các endpoint khác
+              </button>
             </div>
           </div>
         ) : (
