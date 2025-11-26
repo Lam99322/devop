@@ -4,6 +4,7 @@ import axiosClient from "../api/axiosClient";
 export default function Discounts() {
   const [discounts, setDiscounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [copiedCode, setCopiedCode] = useState('');
 
   useEffect(() => {
@@ -11,50 +12,99 @@ export default function Discounts() {
   }, []);
 
   const fetchDiscounts = async () => {
-    try {
-      const response = await axiosClient.get("/discounts");
-      setDiscounts(response.data.data || []);
-    } catch (error) {
-      console.error("Error fetching discounts:", error);
-      // Mock data for demo
-      setDiscounts([
-        {
-          id: 1,
-          code: "WELCOME10",
-          description: "Giảm 10% cho đơn hàng đầu tiên",
-          discountPercent: 10,
-          minOrderAmount: 100000,
-          maxDiscountAmount: 50000,
-          validFrom: "2024-01-01",
-          validTo: "2024-12-31",
-          isActive: true
-        },
-        {
-          id: 2,
-          code: "FREESHIP",
-          description: "Miễn phí vận chuyển cho đơn hàng trên 200k",
-          discountPercent: 0,
-          minOrderAmount: 200000,
-          maxDiscountAmount: 30000,
-          validFrom: "2024-01-01",
-          validTo: "2024-12-31",
-          isActive: true
-        },
-        {
-          id: 3,
-          code: "SUMMER20",
-          description: "Giảm 20% cho mùa hè",
-          discountPercent: 20,
-          minOrderAmount: 300000,
-          maxDiscountAmount: 100000,
-          validFrom: "2024-06-01",
-          validTo: "2024-08-31",
-          isActive: false
+    setLoading(true);
+    setError(null);
+    
+    // Multi-endpoint strategy with proper error handling
+    const endpoints = [
+      '/discounts',
+      '/discounts/list', 
+      '/public/discounts',
+      '/discounts/active'
+    ];
+
+    console.log('🔍 Fetching discounts from multiple endpoints...');
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`📡 Trying endpoint: ${endpoint}`);
+        const response = await axiosClient.get(endpoint);
+        
+        let discountData = [];
+        
+        // Handle different response structures
+        if (Array.isArray(response.data)) {
+          discountData = response.data;
+        } else if (response.data?.data && Array.isArray(response.data.data)) {
+          discountData = response.data.data;
+        } else if (response.data?.discounts && Array.isArray(response.data.discounts)) {
+          discountData = response.data.discounts;
         }
-      ]);
-    } finally {
-      setLoading(false);
+
+        console.log(`✅ Successfully loaded ${discountData.length} discounts from ${endpoint}`);
+        setDiscounts(discountData);
+        setLoading(false);
+        return; // Success, exit the loop
+        
+      } catch (err) {
+        console.warn(`❌ Endpoint ${endpoint} failed:`, err.response?.status, err.message);
+        continue; // Try next endpoint
+      }
     }
+
+    // If all endpoints fail, use mock data
+    console.log('🎭 All endpoints failed, using mock data for demo');
+    setError('Không thể tải mã giảm giá từ server. Hiển thị dữ liệu mẫu.');
+    
+    const mockDiscounts = [
+      {
+        id: 1,
+        code: "WELCOME10",
+        description: "Giảm 10% cho đơn hàng đầu tiên",
+        discountPercent: 10,
+        minOrderAmount: 100000,
+        maxDiscountAmount: 50000,
+        validFrom: "2024-01-01",
+        validTo: "2024-12-31",
+        isActive: true
+      },
+      {
+        id: 2,
+        code: "FREESHIP",
+        description: "Miễn phí vận chuyển cho đơn hàng trên 200k",
+        discountPercent: 0,
+        minOrderAmount: 200000,
+        maxDiscountAmount: 30000,
+        validFrom: "2024-01-01",
+        validTo: "2024-12-31",
+        isActive: true
+      },
+      {
+        id: 3,
+        code: "SUMMER20",
+        description: "Giảm 20% cho mùa hè",
+        discountPercent: 20,
+        minOrderAmount: 300000,
+        maxDiscountAmount: 100000,
+        validFrom: "2024-06-01",
+        validTo: "2024-08-31",
+        isActive: false
+      },
+      {
+        id: 4,
+        code: "NEWUSER15",
+        description: "Ưu đãi 15% cho khách hàng mới",
+        discountPercent: 15,
+        minOrderAmount: 150000,
+        maxDiscountAmount: 75000,
+        validFrom: "2024-11-01",
+        validTo: "2025-01-31",
+        isActive: true
+      }
+    ];
+    
+    setDiscounts(mockDiscounts);
+    setLoading(false);
   };
 
   const copyToClipboard = (code) => {
@@ -83,6 +133,9 @@ export default function Discounts() {
     );
   }
 
+  // Ensure discounts is always an array to prevent map errors
+  const safeDiscounts = Array.isArray(discounts) ? discounts : [];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -92,9 +145,14 @@ export default function Discounts() {
         <p className="text-gray-600">
           Các mã khuyến mại hiện có và cách sử dụng
         </p>
+        {error && (
+          <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+            ⚠️ {error}
+          </div>
+        )}
       </div>
 
-      {discounts.length === 0 ? (
+      {safeDiscounts.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-400 text-6xl mb-4">🎫</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
@@ -106,7 +164,7 @@ export default function Discounts() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {discounts.map((discount) => {
+          {safeDiscounts.map((discount) => {
             const expired = isExpired(discount.validTo);
             const inactive = !discount.isActive;
             

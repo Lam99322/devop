@@ -26,6 +26,7 @@ import ManageUsers from "../pages/Admin/ManageUsers";
 import ManageCategories from "../pages/Admin/ManageCategories";
 import ApiTester from "../pages/Admin/ApiTester";
 import ManageRoles from "../pages/Admin/ManageRoles";
+import DiscountsList from "../pages/Admin/Discounts/DiscountsList";
 
 // ROUTE GUARDS
 import PrivateRoute from "./PrivateRoute";
@@ -96,6 +97,7 @@ export default function AppRoutes() {
         { path: "orders", element: <ManageOrders /> },
         { path: "books", element: <ManageBooks /> },
         { path: "categories", element: <ManageCategories /> },
+        { path: "discounts", element: <DiscountsList /> },
         { path: "roles", element: <ManageRoles /> },
         { path: "api-test", element: <ApiTester /> },
       ],

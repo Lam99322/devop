@@ -1,27 +1,17 @@
-// src/pages/HomeContentOnly.tsx (hoặc Home.jsx)
 import React, { useState, useEffect } from "react";
 import axiosClient from "../api/axiosClient";
 import formatCurrency from "../utils/formatCurrency";
 import { Link, useLocation } from "react-router-dom";
 import { getBookImageUrl, handleImageError } from "../utils/imageUtils";
 
-// Component hiển thị thông tin sách (Card)
+// Component hiển thị thông tin sách
 const BookItem = ({ book }) => {
-    // Giả lập rating và reviews (Nếu dữ liệu từ backend chưa có)
-    const rating = Math.floor(Math.random() * 2) + 4; // 4 hoặc 5 sao
-    const reviews = Math.floor(Math.random() * 50) + 1;
-
     return (
         <Link
             to={`/books/${book.slug}`}
             className="relative bg-white border border-gray-200 rounded-lg shadow-sm p-3 block 
                        transition transform hover:shadow-md hover:-translate-y-0.5"
         >
-            {/* Giả lập badge giảm giá 10% */}
-            <span className="absolute top-0 left-0 bg-yellow-400 text-xs font-bold rounded-tl-lg rounded-br-lg px-2 py-1 z-10">
-                10%
-            </span>
-            
             <img
                 src={getBookImageUrl(book)}
                 alt={book.title}
@@ -32,19 +22,12 @@ const BookItem = ({ book }) => {
             
             <p className="font-semibold text-sm line-clamp-2 min-h-[2.5rem] mt-1">{book.title}</p>
             <p className="text-gray-500 text-xs line-clamp-1">Tác giả: {book.author || 'Đang cập nhật'}</p> 
-            
             <p className="text-red-600 font-bold text-sm mt-1">{formatCurrency(book.price)}</p>
-            
-            {/* Rating và Reviews */}
-            <div className="text-xs text-yellow-500 mt-1 flex items-center">
-                 {'★'.repeat(rating)}{'☆'.repeat(5 - rating)} 
-                 <span className="text-gray-500 ml-1">({reviews} nhận xét)</span>
-            </div>
         </Link>
     );
 };
 
-export default function HomeContentOnly() {
+export default function Home() {
     const [books, setBooks] = useState([]);
     const [pageInfo, setPageInfo] = useState({ totalPages: 1 });
     const [loading, setLoading] = useState(true);
@@ -59,7 +42,7 @@ export default function HomeContentOnly() {
             const res = await axiosClient.get("/books/list", {
                 params: { 
                     pageNo, 
-                    pageSize: 18, 
+                    pageSize: 12, 
                     sortBy: "createdAt:desc", 
                     search,
                 },
@@ -77,82 +60,82 @@ export default function HomeContentOnly() {
         fetchBooks();
     }, [pageNo, search]);
 
-
     return (
-        // Wrapper chính cho nội dung (Thay thế cho div container mx-auto)
-        <div className="flex-1 space-y-8 p-4 bg-gray-50 min-h-[80vh]"> 
+        <div className="flex-1 space-y-6 p-4 bg-gray-50 min-h-screen"> 
             
-            {/* 1. Banner & Sách Nổi Bật - Khu vực trên cùng của giao diện ảnh */}
-            <div className="flex bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden min-h-64">
-                
-                {/* Khu vực Sách Nổi Bật (Kinh nghiệm thành công...) */}
-                <div className="w-2/3 p-4 flex flex-col md:flex-row items-center justify-center space-x-4">
-                    <div className="max-h-56 w-48 bg-gradient-to-br from-blue-500 to-purple-600 shadow-xl border border-gray-300 rounded-lg flex items-center justify-center text-white">
-                        <div className="text-center p-4">
-                            <div className="text-3xl mb-2">📚</div>
-                            <div className="text-sm font-semibold">KINH NGHIỆM</div>
-                            <div className="text-sm">THÀNH CÔNG</div>
-                        </div>
-                    </div>
-                    <div className="text-center md:text-left">
-                        <h3 className="text-xl font-bold text-gray-800">KINH NGHIỆM THÀNH CÔNG CỦA ÔNG CHỦ 48</h3>
-                        <p className="text-sm text-gray-600 mt-2 hidden sm:block">
-                            Giải pháp toàn diện giúp bạn đạt được thành công trong kinh doanh và quản lý. 
-                        </p>
-                    </div>
-                </div>
-
-                {/* Hình ảnh trang trí (ly cà phê) */}
-                <div className="w-1/3 bg-gray-100 hidden sm:flex items-center justify-center p-4">
-                    
+            {/* Hero Banner */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-lg shadow-lg">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold mb-4">📚 Chào mừng đến với Nhà sách Online</h1>
+                    <p className="text-lg mb-6">Khám phá hàng nghìn cuốn sách hay từ các tác giả nổi tiếng</p>
+                    <Link 
+                        to="/books" 
+                        className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+                    >
+                        Khám phá ngay
+                    </Link>
                 </div>
             </div>
 
-            {/* 2. Khu vực Sách Mới/Danh Sách Sản Phẩm */}
-            <section className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 className="text-xl font-bold text-green-700">📖 Sách Mới</h2>
-                    <Link to={`/books?pageNo=${pageNo}`} className="text-sm text-blue-600 hover:text-red-500 font-medium">
-                        Xem tất cả »
+            {/* Sách mới nhất */}
+            <section className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">📚 Sách mới nhất</h2>
+                    <Link 
+                        to="/books" 
+                        className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                    >
+                        Xem tất cả →
                     </Link>
                 </div>
                 
                 {loading ? (
-                    // Skeleton Loading
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="bg-gray-100 rounded-lg h-60 animate-pulse"></div>
+                            <div key={i} className="bg-gray-100 rounded-lg h-64 animate-pulse"></div>
                         ))}
                     </div>
                 ) : (
-                    <>
-                        {/* Danh sách Sách */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                            {books.map((book) => (
-                                <BookItem key={book.id} book={book} />
-                            ))}
-                        </div>
-
-                        {/* Pagination */}
-                        {pageInfo?.totalPages > 1 && (
-                            <div className="flex justify-center gap-2 mt-6">
-                                {Array.from({ length: pageInfo?.totalPages || 1 }, (_, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setPageNo(i)}
-                                        className={`px-3 py-1 text-sm rounded-full border transition ${
-                                            i === pageNo
-                                                ? "bg-green-600 text-white font-bold border-green-700"
-                                                : "bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-600 border-gray-300"
-                                        }`}
-                                    >
-                                        {i + 1}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {books.slice(0, 12).map((book) => (
+                            <BookItem key={book.id} book={book} />
+                        ))}
+                    </div>
                 )}
+            </section>
+
+            {/* Danh mục phổ biến */}
+            <section className="bg-white p-6 rounded-lg shadow-sm">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">🏷️ Danh mục phổ biến</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {[
+                        { id: 1, icon: "💼", name: "Kinh tế - Quản lý", color: "blue" },
+                        { id: 2, icon: "📚", name: "Văn học", color: "purple" },
+                        { id: 3, icon: "🎯", name: "Kỹ năng sống", color: "green" },
+                        { id: 4, icon: "💻", name: "Công nghệ", color: "orange" },
+                        { id: 5, icon: "🎓", name: "Giáo dục", color: "red" },
+                        { id: 6, icon: "🏃", name: "Sức khỏe", color: "teal" },
+                    ].map(category => (
+                        <Link 
+                            key={category.id}
+                            to={`/books?categoryId=${category.id}`} 
+                            className={`group bg-gradient-to-br from-${category.color}-50 to-${category.color}-100 
+                                       hover:from-${category.color}-100 hover:to-${category.color}-200 
+                                       p-4 rounded-lg border border-${category.color}-200 
+                                       transition-all duration-300 hover:shadow-md`}
+                        >
+                            <div className="text-center">
+                                <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+                                    {category.icon}
+                                </div>
+                                <h3 className={`font-medium text-${category.color}-900 text-sm`}>
+                                    {category.name}
+                                </h3>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
             </section>
         </div>
     );
