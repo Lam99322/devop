@@ -4,14 +4,11 @@ import { FaSpinner, FaPlus, FaEdit } from "react-icons/fa";
 
 export default function DiscountForm({ discount = null, onSaved }) {
   const [form, setForm] = useState({
+    name: "",
     code: "",
-    description: "",
-    discountPercent: 0,
-    value: 0,
-    minOrderAmount: 0,
-    maxDiscountAmount: 0,
-    expiryDate: "",
-    isActive: true
+    percent: 0,
+    startDate: "",
+    endDate: ""
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -19,26 +16,19 @@ export default function DiscountForm({ discount = null, onSaved }) {
   useEffect(() => {
     if (discount) {
       setForm({
+        name: discount.name || discount.description || "",
         code: discount.code || "",
-        description: discount.description || "",
-        discountPercent: discount.discountPercent || 0,
-        value: discount.value || 0,
-        minOrderAmount: discount.minOrderAmount || 0,
-        maxDiscountAmount: discount.maxDiscountAmount || 0,
-        expiryDate: discount.expiryDate?.split("T")[0] || discount.validTo?.split("T")[0] || "",
-        isActive: discount.isActive !== false
+        percent: discount.percent || discount.discountPercent || 0,
+        startDate: discount.startDate?.split("T")[0] || "",
+        endDate: discount.endDate?.split("T")[0] || discount.expiryDate?.split("T")[0] || ""
       });
     } else {
-      // Reset form for new discount
       setForm({
+        name: "",
         code: "",
-        description: "",
-        discountPercent: 0,
-        value: 0,
-        minOrderAmount: 0,
-        maxDiscountAmount: 0,
-        expiryDate: "",
-        isActive: true
+        percent: 0,
+        startDate: "",
+        endDate: ""
       });
     }
   }, [discount]);
@@ -46,13 +36,15 @@ export default function DiscountForm({ discount = null, onSaved }) {
   const validateForm = () => {
     const newErrors = {};
     
+    if (!form.name.trim()) newErrors.name = "Tên mã giảm giá là bắt buộc";
     if (!form.code.trim()) newErrors.code = "Mã giảm giá là bắt buộc";
-    if (!form.description.trim()) newErrors.description = "Mô tả là bắt buộc";
-    if (form.discountPercent <= 0 && form.value <= 0) {
-      newErrors.value = "Phải có giá trị giảm giá (% hoặc số tiền)";
+    if (!/^[A-Z0-9]*$/.test(form.code)) newErrors.code = "Mã chỉ được chứa chữ in hoa và số";
+    if (form.percent < 1 || form.percent > 100) newErrors.percent = "Phần trăm phải từ 1-100";
+    if (!form.startDate) newErrors.startDate = "Ngày bắt đầu là bắt buộc";
+    if (!form.endDate) newErrors.endDate = "Ngày kết thúc là bắt buộc";
+    if (form.startDate && form.endDate && form.startDate >= form.endDate) {
+      newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
     }
-    if (form.discountPercent > 100) newErrors.discountPercent = "Phần trăm không được vượt quá 100%";
-    if (!form.expiryDate) newErrors.expiryDate = "Ngày hết hạn là bắt buộc";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -68,62 +60,92 @@ export default function DiscountForm({ discount = null, onSaved }) {
     setSaving(true);
     
     try {
-      console.log(`💾 ${discount ? 'Updating' : 'Creating'} discount:`, form);
-      
-      // Prepare data for backend
+      // Prepare data for backend (matches DiscountRequest)
       const discountData = {
-        ...form,
+        name: form.name.trim(),
         code: form.code.toUpperCase().trim(),
-        expiryDate: form.expiryDate + "T23:59:59",
-        validTo: form.expiryDate + "T23:59:59"
+        percent: parseInt(form.percent),
+        startDate: form.startDate,
+        endDate: form.endDate
       };
 
       let response;
       if (discount) {
-        // Try multiple update endpoints
+        // Check if discount has a valid ID (try multiple field names)
+        const discountId = discount.id || discount._id || discount.discountId || discount.code;
+        
+        if (!discountId) {
+          console.error("No valid ID found in discount object:", discount);
+          console.error("Available fields:", Object.keys(discount));
+          throw new Error("Discount ID is missing for update operation");
+        }
+        
+        // Backend uses PUT /discounts/{discountId}
         const updateEndpoints = [
-          `/discounts/${discount.id}`,
-          `/admin/discounts/${discount.id}`,
-          `/discounts/update/${discount.id}`
+          { method: 'put', url: `/discounts/${discountId}` }
         ];
         
         let updated = false;
+        let lastError = null;
+        
         for (const endpoint of updateEndpoints) {
           try {
-            response = await axiosClient.put(endpoint, discountData);
-            console.log(`✅ Updated via ${endpoint}`);
+            console.log(`🔄 Trying ${endpoint.method.toUpperCase()} ${endpoint.url}`);
+            
+            // Include ID in request body for endpoints that don't have it in URL
+            const requestData = endpoint.url.includes(discountId) 
+              ? discountData 
+              : { ...discountData, id: discountId };
+            
+            if (endpoint.method === 'put') {
+              response = await axiosClient.put(endpoint.url, requestData);
+            } else if (endpoint.method === 'post') {
+              response = await axiosClient.post(endpoint.url, requestData);
+            } else if (endpoint.method === 'patch') {
+              response = await axiosClient.patch(endpoint.url, requestData);
+            }
+            
+            console.log(`✅ Update successful via ${endpoint.method.toUpperCase()} ${endpoint.url}`);
             updated = true;
             break;
           } catch (err) {
-            console.warn(`❌ Update failed via ${endpoint}:`, err.message);
+            console.warn(`❌ ${endpoint.method.toUpperCase()} ${endpoint.url} failed:`, err.response?.status, err.response?.data?.message || err.message);
+            lastError = err;
             continue;
           }
         }
         
-        if (!updated) throw new Error("Không thể cập nhật mã giảm giá");
+        if (!updated) {
+          const errorMsg = lastError?.response?.data?.message || lastError?.message || "Không thể cập nhật mã giảm giá";
+          throw new Error(errorMsg);
+        }
       } else {
-        // Try multiple create endpoints
+        // Backend uses POST /discounts/add
         const createEndpoints = [
-          "/discounts",
-          "/discounts/add",
-          "/admin/discounts",
-          "/discounts/create"
+          "/discounts/add"
         ];
         
         let created = false;
+        let lastError = null;
+        
         for (const endpoint of createEndpoints) {
           try {
+            console.log(`🔄 Trying POST ${endpoint}`);
             response = await axiosClient.post(endpoint, discountData);
-            console.log(`✅ Created via ${endpoint}`);
+            console.log(`✅ Created via POST ${endpoint}`);
             created = true;
             break;
           } catch (err) {
-            console.warn(`❌ Create failed via ${endpoint}:`, err.message);
+            console.warn(`❌ POST ${endpoint} failed:`, err.response?.status, err.response?.data?.message || err.message);
+            lastError = err;
             continue;
           }
         }
         
-        if (!created) throw new Error("Không thể tạo mã giảm giá");
+        if (!created) {
+          const errorMsg = lastError?.response?.data?.message || lastError?.message || "Không thể tạo mã giảm giá";
+          throw new Error(errorMsg);
+        }
       }
 
       alert(`✅ ${discount ? 'Cập nhật' : 'Tạo'} mã giảm giá thành công!`);
@@ -144,7 +166,6 @@ export default function DiscountForm({ discount = null, onSaved }) {
       }
       
     } catch (err) {
-      console.error('❌ Discount operation failed:', err);
       const errorMsg = err.response?.data?.message || err.message || "Có lỗi xảy ra";
       alert(`❌ Lỗi: ${errorMsg}`);
     } finally {
@@ -161,104 +182,69 @@ export default function DiscountForm({ discount = null, onSaved }) {
       
       <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tên mã giảm giá *</label>
+          <input
+            className={`w-full px-3 py-2 border rounded-lg ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+            placeholder="VD: Giảm giá mùa hè"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Mã giảm giá *</label>
           <input
             className={`w-full px-3 py-2 border rounded-lg ${errors.code ? 'border-red-500' : 'border-gray-300'}`}
             placeholder="VD: WELCOME10"
             value={form.code}
             onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-            maxLength="20"
+            maxLength="50"
             required
           />
           {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Phần trăm giảm giá (1-100) *</label>
           <input
-            className={`w-full px-3 py-2 border rounded-lg ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
-            placeholder="Mô tả mã giảm giá"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            required
-          />
-          {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Giảm theo % (0-100)</label>
-          <input
-            className={`w-full px-3 py-2 border rounded-lg ${errors.discountPercent ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-3 py-2 border rounded-lg ${errors.percent ? 'border-red-500' : 'border-gray-300'}`}
             placeholder="10"
             type="number"
-            min="0"
+            min="1"
             max="100"
-            value={form.discountPercent}
-            onChange={(e) => setForm({ ...form, discountPercent: Number(e.target.value) })}
+            value={form.percent}
+            onChange={(e) => setForm({ ...form, percent: Number(e.target.value) })}
+            required
           />
-          {errors.discountPercent && <p className="text-red-500 text-xs mt-1">{errors.discountPercent}</p>}
+          {errors.percent && <p className="text-red-500 text-xs mt-1">{errors.percent}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Hoặc giảm số tiền (VNĐ)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu *</label>
           <input
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            placeholder="50000"
-            type="number"
-            min="0"
-            value={form.value}
-            onChange={(e) => setForm({ ...form, value: Number(e.target.value) })}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Đơn hàng tối thiểu</label>
-          <input
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            placeholder="100000"
-            type="number"
-            min="0"
-            value={form.minOrderAmount}
-            onChange={(e) => setForm({ ...form, minOrderAmount: Number(e.target.value) })}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Giảm tối đa</label>
-          <input
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            placeholder="50000"
-            type="number"
-            min="0"
-            value={form.maxDiscountAmount}
-            onChange={(e) => setForm({ ...form, maxDiscountAmount: Number(e.target.value) })}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hết hạn *</label>
-          <input
-            className={`w-full px-3 py-2 border rounded-lg ${errors.expiryDate ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-3 py-2 border rounded-lg ${errors.startDate ? 'border-red-500' : 'border-gray-300'}`}
             type="date"
-            value={form.expiryDate}
-            onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+            value={form.startDate}
+            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
             min={new Date().toISOString().split('T')[0]}
             required
           />
-          {errors.expiryDate && <p className="text-red-500 text-xs mt-1">{errors.expiryDate}</p>}
+          {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
         </div>
 
-        <div className="flex items-center">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc *</label>
           <input
-            type="checkbox"
-            id="isActive"
-            checked={form.isActive}
-            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-            className="mr-2"
+            className={`w-full px-3 py-2 border rounded-lg ${errors.endDate ? 'border-red-500' : 'border-gray-300'}`}
+            type="date"
+            value={form.endDate}
+            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+            min={form.startDate || new Date().toISOString().split('T')[0]}
+            required
           />
-          <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-            Kích hoạt ngay
-          </label>
+          {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
         </div>
 
         <div className="md:col-span-2">

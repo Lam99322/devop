@@ -15,8 +15,6 @@ export default function DiscountsList() {
       setLoading(true);
       setError(null);
       
-      console.log('🎫 Loading admin discounts...');
-      
       // Try multiple admin endpoints for discounts
       const adminEndpoints = [
         '/discounts',              // Main ADMIN endpoint
@@ -30,9 +28,7 @@ export default function DiscountsList() {
       
       for (const endpoint of adminEndpoints) {
         try {
-          console.log(`🔍 Trying admin endpoint: ${endpoint}`);
           const response = await axiosClient.get(`${endpoint}?pageNo=0&pageSize=1000&sortBy=createdAt:desc`);
-          console.log(`✅ SUCCESS with ${endpoint}:`, response.data);
           
           // Extract discounts from different response structures
           if (response.data?.data?.content) {
@@ -46,73 +42,22 @@ export default function DiscountsList() {
           }
           
           successEndpoint = endpoint;
-          console.log(`🎯 Admin found ${discountsData.length} discounts via ${endpoint}`);
           break;
           
         } catch (endpointError) {
-          console.log(`❌ Failed ${endpoint}: ${endpointError.response?.status} - ${endpointError.response?.data?.message || endpointError.message}`);
           continue;
         }
       }
       
       if (!successEndpoint) {
-        console.log('⚠️ All admin endpoints failed, using mock data...');
-        
-        // Mock discounts for admin demo
-        discountsData = [
-          {
-            id: 'admin1',
-            code: "ADMIN10",
-            description: "Admin demo discount 10%",
-            discountPercent: 10,
-            value: 10,
-            minOrderAmount: 100000,
-            maxDiscountAmount: 50000,
-            validFrom: "2024-01-01",
-            validTo: "2024-12-31",
-            expiryDate: "2024-12-31T00:00:00Z",
-            isActive: true,
-            status: 'ACTIVE',
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 'admin2',
-            code: "FREESHIP",
-            description: "Admin demo free shipping",
-            discountPercent: 0,
-            value: 30000,
-            minOrderAmount: 200000,
-            maxDiscountAmount: 30000,
-            validFrom: "2024-01-01",
-            validTo: "2024-12-31",
-            expiryDate: "2024-12-31T00:00:00Z",
-            isActive: true,
-            status: 'ACTIVE',
-            createdAt: new Date().toISOString()
-          }
-        ];
-        console.log(`🎭 Using ${discountsData.length} mock admin discounts`);
+        throw new Error("Không thể tải dữ liệu từ server");
       }
       
       setDiscounts(discountsData);
       
     } catch (err) {
-      console.error('❌ Failed to load admin discounts:', err);
-      setError(`Admin không thể tải mã giảm giá: ${err.message}. Kiểm tra quyền admin hoặc backend.`);
-      
-      // Final fallback: Always show some discounts for admin demo
-      setDiscounts([
-        {
-          id: 'fallback1',
-          code: "DEMO20",
-          description: "Fallback demo discount",
-          value: 20,
-          discountPercent: 20,
-          expiryDate: "2025-12-31T00:00:00Z",
-          isActive: true,
-          createdAt: new Date().toISOString()
-        }
-      ]);
+      setError(`Không thể tải mã giảm giá: ${err.message}`);
+      setDiscounts([]);
     } finally {
       setLoading(false);
     }
@@ -126,13 +71,12 @@ export default function DiscountsList() {
     if (!confirm("Bạn có chắc chắn muốn xóa mã giảm giá này?")) return;
     
     try {
-      console.log(`🗑️ Deleting discount ${id}...`);
+      // Backend uses DELETE /discounts/{discountId}
       await axiosClient.delete(`/discounts/${id}`);
-      console.log('✅ Discount deleted successfully');
+      
       alert('Xóa mã giảm giá thành công!');
       load();
     } catch (err) {
-      console.error('❌ Failed to delete discount:', err);
       alert(`Không thể xóa mã giảm giá: ${err.response?.data?.message || err.message}`);
     }
   };
@@ -173,18 +117,23 @@ export default function DiscountsList() {
 
       {/* Form Section */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">
-          {editing ? 'Chỉnh sửa mã giảm giá' : 'Thêm mã giảm giá mới'}
-        </h2>
-        <div className="mb-4 flex gap-4">
-          <DiscountForm onSaved={load} />
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">
+            {editing ? 'Chỉnh sửa mã giảm giá' : 'Thêm mã giảm giá mới'}
+          </h2>
           {editing && (
-            <DiscountForm 
-              discount={editing} 
-              onSaved={() => { setEditing(null); load(); }} 
-            />
+            <button
+              onClick={() => setEditing(null)}
+              className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+            >
+              Hủy chỉnh sửa
+            </button>
           )}
         </div>
+        <DiscountForm 
+          discount={editing} 
+          onSaved={() => { setEditing(null); load(); }} 
+        />
       </div>
 
       {/* Discounts Table */}
@@ -215,34 +164,29 @@ export default function DiscountsList() {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-left p-4 font-medium text-gray-700">Mã</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Mô tả</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Giá trị</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Đơn tối thiểu</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Hết hạn</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Tên</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Phần trăm</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Ngày bắt đầu</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Ngày kết thúc</th>
                   <th className="text-left p-4 font-medium text-gray-700">Trạng thái</th>
                   <th className="text-left p-4 font-medium text-gray-700">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {discounts.map(d => (
-                  <tr key={d.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <tr key={d.id || d._id || d.code} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="p-4 font-mono text-sm font-bold text-blue-600">{d.code}</td>
                     <td className="p-4 max-w-xs">
-                      <p className="truncate" title={d.description}>{d.description}</p>
+                      <p className="truncate" title={d.name || d.description}>{d.name || d.description}</p>
                     </td>
                     <td className="p-4">
-                      {d.discountPercent > 0 ? (
-                        <span className="text-green-600 font-medium">{d.discountPercent}%</span>
-                      ) : (
-                        <span className="text-blue-600 font-medium">{formatCurrency(d.value || d.maxDiscountAmount || 0)}</span>
-                      )}
+                      <span className="text-green-600 font-medium">{d.percent}%</span>
                     </td>
                     <td className="p-4 text-sm">
-                      {formatCurrency(d.minOrderAmount || 0)}
+                      {d.startDate ? new Date(d.startDate).toLocaleDateString('vi-VN') : 'N/A'}
                     </td>
                     <td className="p-4 text-sm">
-                      {d.expiryDate ? new Date(d.expiryDate).toLocaleDateString('vi-VN') : 
-                       d.validTo ? new Date(d.validTo).toLocaleDateString('vi-VN') : 'N/A'}
+                      {d.endDate ? new Date(d.endDate).toLocaleDateString('vi-VN') : 'N/A'}
                     </td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(d.status, d.isActive)}`}>
@@ -254,7 +198,27 @@ export default function DiscountsList() {
                     <td className="p-4">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setEditing(d)}
+                          onClick={() => {
+                            console.log("Discount object for editing:", d);
+                            console.log("Available keys:", Object.keys(d));
+                            
+                            // Check for various ID field names
+                            const discountId = d.id || d._id || d.discountId || d.code;
+                            
+                            if (!discountId) {
+                              alert("Không thể chỉnh sửa: Thiếu ID của mã giảm giá");
+                              console.error("No valid ID found in discount object:", d);
+                              return;
+                            }
+                            
+                            // Ensure the discount object has an id for the form
+                            const discountWithId = {
+                              ...d,
+                              id: discountId
+                            };
+                            
+                            setEditing(discountWithId);
+                          }}
                           className="flex items-center gap-1 px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-sm"
                         >
                           <FaEdit />

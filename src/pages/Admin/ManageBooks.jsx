@@ -46,68 +46,37 @@ export default function ManageBooks() {
         fullResponse: res
       });
       
-      // Handle Spring Boot response structure
       let booksData = [];
       
       if (res.data) {
-        console.log("📊 Analyzing response structure...");
-        
-        // Check common Spring Boot patterns
         if (Array.isArray(res.data)) {
-          console.log("📋 Direct array response");
           booksData = res.data;
         } else if (res.data.code !== undefined && res.data.data) {
-          // Spring Boot response: {code: 1000, message: "success", data: [...]}
-          console.log("📋 Spring Boot pattern: res.data.data");
-          console.log("📊 Response code:", res.data.code);
-          console.log("📊 Response message:", res.data.message);
-          
           if (Array.isArray(res.data.data)) {
             booksData = res.data.data;
           } else if (res.data.data.content && Array.isArray(res.data.data.content)) {
-            // Paginated response
-            console.log("📋 Paginated response: res.data.data.content");
             booksData = res.data.data.content;
           } else if (res.data.data.items && Array.isArray(res.data.data.items)) {
-            console.log("📋 Items response: res.data.data.items");
             booksData = res.data.data.items;
           }
         } else if (res.data.data && Array.isArray(res.data.data)) {
-          console.log("📋 Generic .data array");
           booksData = res.data.data;
         } else if (res.data.content && Array.isArray(res.data.content)) {
-          console.log("📋 Content array");
           booksData = res.data.content;
         } else {
-          console.warn("⚠️ Unhandled response structure:", {
-            type: typeof res.data,
-            keys: Object.keys(res.data),
-            sampleData: res.data
-          });
-          
-          // Try to find any array in the response
           Object.keys(res.data).forEach(key => {
             if (Array.isArray(res.data[key])) {
-              console.log(`📦 Found array at key '${key}'`);
               booksData = res.data[key];
             }
           });
         }
       }
-      
-      console.log("📦 Books loaded:", booksData.length);
       setBooks(booksData);
       
       if (booksData.length === 0) {
         setError("Chưa có sách nào trong hệ thống.");
       }
     } catch (err) {
-      console.error("❌ Error loading books:", err);
-      console.error("❌ Error details:", {
-        status: err.response?.status,
-        message: err.response?.data?.message || err.message,
-        url: err.config?.url
-      });
       
       let errorMsg = "Không thể tải danh sách sách";
       if (err.response?.status === 401) {
@@ -130,21 +99,11 @@ export default function ManageBooks() {
   };
 
   useEffect(() => {
-    console.log("🚀 ManageBooks component mounted");
-    
-    // First verify we have admin access
     const verifyAccess = async () => {
       try {
-        console.log("🔐 Testing admin access...");
-        console.log("👤 Current user:", user);
-        console.log("🎫 Auth token:", cookieUtils.getAuthToken() ? "Present" : "Missing");
-        
-        // Try a simple admin endpoint first
-        const testRes = await axiosClient.get("/books");
-        console.log("✅ Admin access verified, loading books...");
+        await axiosClient.get("/books");
         loadBooks();
       } catch (err) {
-        console.error("❌ Admin access test failed:", err);
         if (err.response?.status === 401) {
           setError("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại với tài khoản admin.");
         } else if (err.response?.status === 403) {
@@ -166,10 +125,8 @@ export default function ManageBooks() {
     
     try {
       setDeleting(id);
-      console.log(`🗑️ Deleting book ID: ${id}`);
       
       await axiosClient.delete(`/books/${id}`);
-      console.log(`✅ Book deleted successfully`);
       
       // Remove from local state
       setBooks(prev => {
@@ -179,12 +136,6 @@ export default function ManageBooks() {
       
       alert(`Đã xóa sách "${book?.title}" thành công!`);
     } catch (err) {
-      console.error("❌ Delete book error:", err);
-      console.error("❌ Error details:", {
-        status: err.response?.status,
-        message: err.response?.data?.message || err.message,
-        bookId: id
-      });
       
       const errorMsg = err.response?.data?.message || 
                       `Xóa sách thất bại (${err.response?.status || 'Network Error'})! Vui lòng thử lại.`;
@@ -229,53 +180,6 @@ export default function ManageBooks() {
         {error && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-yellow-800">{error}</p>
-            <button
-              onClick={() => {
-                console.log("🎭 Loading mock data for testing...");
-                setBooks([
-                  {
-                    id: 1,
-                    title: "Đắc Nhân Tâm",
-                    author: "Dale Carnegie",
-                    price: 89000,
-                    category: "Kỹ năng sống",
-                    stock: 25,
-                    description: "Cuốn sách kinh điển về kỹ năng giao tiếp"
-                  },
-                  {
-                    id: 2,
-                    title: "Sapiens",
-                    author: "Yuval Noah Harari",
-                    price: 125000,
-                    category: "Lịch sử",
-                    stock: 15,
-                    description: "Lược sử loài người"
-                  },
-                  {
-                    id: 3,
-                    title: "Clean Code",
-                    author: "Robert C. Martin",
-                    price: 180000,
-                    category: "Công nghệ",
-                    stock: 8,
-                    description: "Cẩm nang viết code sạch"
-                  },
-                  {
-                    id: 4,
-                    title: "Atomic Habits",
-                    author: "James Clear",
-                    price: 120000,
-                    category: "Kỹ năng sống",
-                    stock: 12,
-                    description: "Thay đổi tí hon hiệu quả bất ngờ"
-                  }
-                ]);
-                setError(null);
-              }}
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            >
-              Dùng dữ liệu mẫu để test
-            </button>
           </div>
         )}
 
