@@ -27,11 +27,13 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    # Đảm bảo bạn đã có script "lint" trong package.json, nếu không thì xóa dòng này
     - name: Run linting
-      run: npm run lint  # Assuming you have lint script, otherwise remove
+      run: npm run lint
 
+    # Đảm bảo bạn đã có script "test" trong package.json, nếu không thì xóa dòng này
     - name: Run tests
-      run: npm run test  # Assuming you have test script, otherwise remove
+      run: npm run test
 
     - name: Build project
       run: npm run build
@@ -65,43 +67,3 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-
-    - name: Deploy to production server
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        port: ${{ secrets.SERVER_PORT || 22 }}
-        script: |
-          # Navigate to project directory (adjust if needed)
-          cd /path/to/your/project || echo "Using current directory"
-
-          # Stop and remove existing containers
-          docker-compose down || docker stop bookstore-frontend || true
-          docker rm bookstore-frontend || true
-
-          # Pull latest image
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bookstore-frontend:latest
-
-          # Set environment variable and start with docker-compose
-          export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-          docker-compose up -d
-
-          # Wait for container to be healthy
-          sleep 10
-
-          # Check if container is running
-          if docker ps | grep -q bookstore-frontend; then
-            echo "✅ Container is running successfully!"
-            echo "🌐 Frontend available at: http://$(hostname -I | awk '{print $1}'):3001"
-          else
-            echo "❌ Container failed to start"
-            exit 1
-          fi
-
-          # Clean up old images
-          docker image prune -f
-
-          echo "Deployment completed successfully!"
