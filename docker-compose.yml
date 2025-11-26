@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  bookstore-frontend:
+    image: ${DOCKERHUB_USERNAME}/bookstore-frontend:latest
+    container_name: bookstore-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"  # Map port 3001 on host to port 80 in container
+    environment:
+      - NODE_ENV=production
+    networks:
+      - bookstore-network
+
+networks:
+  bookstore-network:
+    driver: bridge

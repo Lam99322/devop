@@ -1,9 +1,11 @@
 import axios from "axios";
 import cookieUtils from "../utils/cookieUtils";
 
+const BASE_URL = "https://bookstorebackend.duckdns.org/bookstore"; 
+
 // 🔹 Client cho các request cần token
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8080/bookstore",
+  baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -72,6 +74,6 @@ export default axiosClient;
 
 // 🔹 Client public cho login/register, không cần token
 export const axiosClientPublic = axios.create({
-  baseURL: "http://localhost:8080/bookstore",
+  baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
